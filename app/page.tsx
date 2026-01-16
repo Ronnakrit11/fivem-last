@@ -251,7 +251,7 @@ export default async function Home() {
               <h3 className="text-2xl font-bold mb-4 bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">infinitygamecenter</h3>
               <p className="text-slate-400 mb-8 max-w-md mx-auto">
                 A demonstration of modern authentication patterns and best
-                practices
+                practices 
               </p>
               <div className="flex justify-center gap-8">
                 <Link
