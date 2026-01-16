@@ -1,0 +1,78 @@
+import { NextResponse } from "next/server";
+import { auth } from "@/lib/auth";
+import { headers } from "next/headers";
+import { prisma } from "@/lib/prisma";
+
+export async function GET() {
+  try {
+    const session = await auth.api.getSession({
+      headers: await headers(),
+    });
+
+    if (!session) {
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+
+    // Check if user is admin
+    const user = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { role: true },
+    });
+
+    if (user?.role !== "admin") {
+      return NextResponse.json(
+        { error: "Forbidden - Admin only" },
+        { status: 403 }
+      );
+    }
+
+    // Get today's date range
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    // Fetch statistics in parallel from GameItemOrder
+    const [totalUsers, totalSales, todayOrders, totalOrders] = await Promise.all([
+      // จำนวนผู้ใช้ทั้งหมด
+      prisma.user.count(),
+      
+      // ยอดขายทั้งหมด (จาก GameItemOrder ที่อนุมัติแล้ว)
+      prisma.gameItemOrder.aggregate({
+        where: { 
+          status: { in: ["APPROVED", "COMPLETED"] }
+        },
+        _sum: { amount: true },
+      }),
+      
+      // คำสั่งซื้อวันนี้
+      prisma.gameItemOrder.count({
+        where: {
+          createdAt: {
+            gte: today,
+            lt: tomorrow,
+          },
+        },
+      }),
+      
+      // จำนวนการขายทั้งหมดในระบบ
+      prisma.gameItemOrder.count(),
+    ]);
+
+    return NextResponse.json({
+      totalUsers,
+      totalSales: totalSales._sum.amount || 0,
+      todayOrders,
+      totalOrders,
+    });
+  } catch (error) {
+    console.error("Error fetching admin stats:", error);
+    return NextResponse.json(
+      { error: "Failed to fetch statistics" },
+      { status: 500 }
+    );
+  }
+}

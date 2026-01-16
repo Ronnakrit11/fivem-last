@@ -1,0 +1,215 @@
+ทำความเข้าใจ codebase, schema db และทำระบบเติมเกม และระบบขายบัตรเติมเงิน
+ระบบเติมเกม:
+- [หน้าแรก หรือ หน้าเติมเกมทั้งหมด]การ list เกม จะ list icon แบบ grid เมื่อกด icon เข้าไป จะเป็นหน้าเติมเกม ซึ่ง จะ มี card 2 ฝั่ง คือ  card ฝั่งซ้ายจะเล็กกว่า ฝั่งขวา โดย ซ้าย 1/4 ขวา 3/4
+- [หน้าเติมเกม] card ฝั่งซ้ายจะเป็น ที่ขึ้น icon เกม, ชื่อเกม และ ด้านใต้จะขึ้น description
+- [หน้าเติมเกม] card ฝั่งขวา ถ้า isPlayerId = true จะขึ้น card ให้กรอก playerId ซึ่งจะใช้ชื่อ input จาก playerFieldName ส่วนถ้า isServer = true จะขึ้น select ให้ select server โดยที่ option ของ server มาจาก table server และ card ด้านล่างของข้อมูลผู้เล่นจะเป็น เลือก package ซึ่งจะมี 2 tab ซึ่ง tab แรก เป็น package (แพ็คเกจ) ที่มีอยู่ใน table Package และ tab ที่ 2 เป็น mixPackage (แพ็คเกจผสม) ที่มีอยู่ใน table MixPackage แต่ละ tab จะเป็น card grid กดเลือกแบบ radio อะ ซึ่งใน card จะประกอบด้วย icon ด้านบนและ ชื่อ แพ็คเกจด้านล่าง icon และราคาด้านล่าง ชื่อ และด้านล่างต่อจาก card เลือก package จะเป็น card สรุปคำสั่งซื้อ และมีปุ่ม เติมเกม ซึ่งกด แล้ว จะเป็น modal confirm ที่มี animation เปิด/ปิด ด้วยนะ และเมื่อกด ยืนยันจะยิง เข้า api backend
+- [TopupGame Backend API]เมื่อกดเติมเกม ระบบจะเช็คก่อนเลยว่า ถ้า isPlayerId = true user จะต้องกรอก playerId ถ้า isServer = true user จะต้องส่ง serverId มาและต้อง ตรงกับ table Server นะ และเช็คด้วยว่า package หรือ mixPackage นั้นต้องมีอยู่ใน table Package หรือ MixPackage นะ และต้อง isActive = true รวมถึง game isActive ต้องเป็น true คือ user จะสามารถเลือกได้ว่า จะส่งเป็น packageId หรือ mixPackageId คือทั้งสองตัวนี้จะเป็นตัวเลือกว่า เราจะส่ง package แบบไหน โดย package จะเป็นแบบเดียว แต่ mixPackage จะเป็น เหมือน หลายๆ package มารวมกัน ซึ่ง items ใน mixPackage จะเป็น json array ของ packageId เช่น ["packageId1", "packageId2"] และเช็คด้วยนะว่าเงินพอไหม
+- [TopupGame Backend API]ระบบจะ หักเงินจาก balance โดยใช้ price เป็นการหักเงิน 
+- [TopupGame Backend API]เมื่อหักเงินสำเร็จ ระบบจะสร้างรายการ PurchaseGame และ ระบบจะส่ง Request ไปที่ Wepay API ซึ่ง ถ้าเป็น mixPackage จะ เอา items มา loop ส่งนะ
+- [TopupGame Backend API] Wepay จะส่ง Callback มาเพื่ออัพเดต สถานะการรายการ และคืนเงินเมื่อสถานะไม่สำเร็จ
+
+ระบบขายบัตรเติมเงิน:
+- [หน้าแรก หรือ หน้าบัตรเติมเงินทั้งหมด]การ list เกม จะ list icon แบบ grid เมื่อกด icon เข้าไป จะเป็นหน้าบัตรเติมเงิน ซึ่ง จะ มี card 2 ฝั่ง คือ  card ฝั่งซ้ายจะเล็กกว่า ฝั่งขวา โดย ซ้าย 1/4 ขวา 3/4
+- [หน้าบัตรเติมเงิน] card ฝั่งซ้ายจะเป็น ที่ขึ้น icon บัตรเงินสด, ชื่อบัตรเงินสด และ ด้านใต้จะขึ้น description
+- [หน้าบัตรเติมเงิน] card ฝั่งขวา เลือก CardOption (บัตรเงินสด) ซึ่งจะเป็น card grid กดเลือกแบบ radio อะ ซึ่งใน card จะประกอบด้วย icon ด้านบนและ ชื่อ แพ็คเกจด้านล่าง icon และราคาด้านล่าง ชื่อ และด้านล่างต่อจาก card เลือก package จะเป็น card สรุปคำสั่งซื้อ และมีปุ่ม ซื้อบัตรเติมเงิน ซึ่งกด แล้ว จะเป็น modal confirm ที่มี animation เปิด/ปิด ด้วยนะ และเมื่อกด ยืนยันจะยิง เข้า api backend
+- [Card Backend API] เมื่อกดซื้อบัตรเติมเงิน ระบบจะเช็คก่อนเลยว่า CardOption นั้นต้องมีอยู่ใน table CardOption นะ และต้อง isActive = true รวมถึง Card isActive ต้องเป็น true เช็คด้วยว่าเงินพอไหม 
+- [Card Backend API]ระบบจะ หักเงินจาก balance โดยใช้ price เป็นการหักเงิน 
+- [Card Backend API]เมื่อหักเงินสำเร็จ ระบบจะสร้างรายการ PurchaseCard และ ระบบจะส่ง Request ไปที่ Wepay API
+- [Card Backend API] Wepay จะส่ง Callback มาเพื่ออัพเดต สถานะการรายการ และคืนเงินเมื่อสถานะไม่สำเร็จ
+
+- ออกแบบ UI ให้สวยงาม และ UX ถูกต้องตามหลักการ UX และ User ใช้งานง่าย
+- รองรับ Mobile Responsive
+- เช็ค logic ว่าตัวไหนไม่ปลอดภัยและแก้ไขให้ปลอดภัย
+
+ประวัติการเติมเกมและประวัติการซื้อบัตรเติมเงิน
+- UI จะเหมือน /app-history แต่ทำให้สวยงามกว่า และ UX ถูกต้องตามหลักการ UX และ User ใช้งานง่าย
+- ถ้า desktop จะเป็น table แต่ถ้า mobile จะเป็น card list
+
+Wepay API จงอ่านทำความเข้าใจให้ดีก่อนลงมือทำ:
+การเชื่อมต่อระบบกับ wePAY
+
+เว็บไซต์ของคู่ค้าจะมีการติดต่อกับระบบ wePAY อยู่ 2 ส่วน โดย API เป็นแบบ RESTful API
+กระบวนการทำงานคือ ระบบคู่ค้าจะส่งข้อมูลการชำระเงินไปยัง wePAY ก่อน
+จากนั้น wePAY จะส่งผลการชำระเงินกลับมาที่เซิร์ฟเวอร์ของคู่ค้า โดยคู่ค้าไม่จำเป็นต้อง Poll ถามผลเอง
+
+รายละเอียดดังนี้:
+
+1) ส่วนการรับข้อมูลการชำระเงินจากคู่ค้า
+
+เป็นขั้นตอนที่เว็บไซต์ของคู่ค้ารับข้อมูลการทำรายการจากลูกค้า
+เพื่อนำไปจัดเก็บลงฐานข้อมูลของระบบคู่ค้า จากนั้นทำการส่งข้อมูลการชำระเงินไปยังระบบ wePAY
+เมื่อส่งข้อมูลเรียบร้อยแล้ว คู่ค้าจะแจ้งลูกค้าว่า “รับรายการสำเร็จ”
+จากนั้นจะ redirect ลูกค้ากลับไปยังหน้าที่แสดงรายการและสถานะของการชำระเงิน
+
+2) ส่วนการรับผลการทำรายการจาก wePAY
+
+เป็นส่วนที่ระบบของคู่ค้ารอรับผลการชำระเงินจากระบบ wePAY โดยตรง
+เพื่อบันทึกสถานะการชำระเงิน เช่น สำเร็จ / ไม่สำเร็จ / ผิดพลาด และอัปเดตข้อมูลในระบบคู่ค้าโดยอัตโนมัติ
+
+- Product List: https://wepay.in.th/comp_export.php?json [จงยิงทดสอบเส้นนี้ก่อนเขียนโค้ด]
+
+1. การตรวจสอบยอดเงนิคงเหลอื ในบญั ชี
+ในสว่ นของการตรวจสอบยอดเงนิ คงเหลอื ในบญั ชีwePAY คู่ค ้าจะทราบผลทันที
+Request
+Endpoint URL https://www.wepay.in.th/client_api.json.php
+Method POST (x-www-form-urlencoded)
+Parameters Username Username ของคู่ค ้าบนระบบ wePAY
+password Password ของคู่ค ้าบนระบบ wePAY
+type balance_inquiry (fixed)
+ตัวอย่างการตรวจสอบยอดเงินคงเหลือ
+> POST /client_api.json.php HTTP/1.1
+> Host: www.wepay.in.th
+> Content-Type: application/x-www-form-urlencoded
+username=test&password=test&type=balance_inquiry
+ผลการตอบกลับ
+ดู Status Code ได ้ในหัวข ้อที่ 10
+ตัวอย่างผลการตอบกลับ
+{"code":"00000","ledger_balance":"299987.74","available_balance":299987.74}
+
+2. การตรวจสอบข้อมูลบริการที่รับชำระ
+ใช้สำหรับตรวจสอบข้อมูลบริการที่รับชำระ ทั้ง Bill Payment, Mobile Topup และ Cash Card
+
+Request
+Endpoint URL: https://www.wepay.in.th/client_api.json.php
+Method: POST (x-www-form-urlencoded)
+
+Parameters
+- username: Username ของคู่ค้าบนระบบ wePAY
+- password: Password ของคู่ค้าบนระบบ wePAY
+- type: billpay, mtopup หรือ cashcard
+- pay_to_company: รหัสบริการที่ต้องการชำระ เช่น MEA, PEA, 12CALL
+- payee_info: true (fixed)
+
+ตัวอย่างการตรวจสอบยอดเงินคงเหลือ
+POST /client_api.json.php HTTP/1.1
+Host: www.wepay.in.th
+Content-Type: application/x-www-form-urlencoded
+
+username=test&password=test&type=mtopup&pay_to_company=12CALL&payee_info=true
+
+ผลการตอบกลับ: ดู Status Code ในหัวข้อที่ 10
+
+ตัวอย่างผลการตอบกลับ
+{"code":"00000","service_name":"เอไอเอส วัน-ทู-คอล!","discount":3.5,"fee":0,"ref1":{"title":null,"min_length":10,"max_length":10},"ref2":{"title":null,"min_length":null,"max_length":null},"ref3":{"title":null,"min_length":null,"max_length":null},"ref4":{"title":null,"min_length":null,"max_length":null},"ref5":{"title":null,"min_length":null,"max_length":null},"ref6":{"title":null,"min_length":null,"max_length":null},"sof_min":5,"sof_max":1500,"sof_defined_amounts":[5,10,20,30,40,50,60,70,80,90,100,150,200,250,300,350,400,450,500,600,700,790,800,990,1000,1290,1500]}
+
+ตัวอย่างผลการตอบกลับกรณีไม่พบ Payee ที่ระบุ
+{"code":"30001","desc":"Company Not Found"}
+
+
+3. ส่วนการรับข้อมูลการชำระเงินจากคู่ค้า
+ขั้นตอนในการติดต่อ
+
+1. เว็บร้านค้าส่งข้อมูลการชำระเงินไปยัง wePAY (HTTPS + POST)
+2. ระบบ wePAY รับรายการ พร้อมแจ้งผลการรับรายการ (ยังอยู่ระหว่างดำเนินการ)
+3. wePAY ส่งผลการทำรายการกลับไปยัง resp_url ที่คู่ค้าระบุ
+
+ตัวแปรในการรับข้อมูลการชำระเงินจากคู่ค้า
+Endpoint URL: https://www.wepay.in.th/client_api.json.php
+Method: POST (x-www-form-urlencoded)
+
+Parameters
+- username: Username ของคู่ค้าบนระบบ wePAY
+- password: Password ของคู่ค้าบนระบบ wePAY
+- resp_url: Callback URL สำหรับรับผล เช่น http://www.mywebsite.com/wepay_result.php
+- dest_ref: Reference สำหรับอ้างอิงรายการ (a-z,A-Z,0-9 ไม่เกิน 20 ตัว)
+- type: billpay | mtopup | cashcard
+- pay_to_amount: จำนวนเงิน เช่น 20, 10, 158.55
+- pay_to_company: รหัสบริการ เช่น MEA, PEA, 12CALL
+- pay_to_ref1: Reference 1
+   * เติมเงินมือถือ = หมายเลขโทรศัพท์
+   * บัตรเงินสด = "0000000000"
+- pay_to_ref2: ไม่ต้องระบุ (mtopup/cashcard)
+- pay_to_ref3: ไม่ต้องระบุ
+- pay_to_barcode1: เลข Barcode ถ้าบริการต้องใช้
+
+ตัวอย่างการชำระใบแจ้งหนี้ทรูมูฟเอช
+POST /client_api.json.php HTTP/1.1
+Host: www.wepay.in.th
+Content-Type: application/x-www-form-urlencoded
+username=test&password=test&resp_url=https://www.mywebsite.com/wepay_result.php&dest_ref=BILL12345&pay_to_amount=1054.50&pay_to_company=TRMV&type=billpay&pay_to_ref1=0812345678
+
+ตัวอย่างการเติมเงินมือถือวันทูคอล
+POST /client_api.json.php HTTP/1.1
+Host: www.wepay.in.th
+Content-Type: application/x-www-form-urlencoded
+username=test&password=test&resp_url=https://www.mywebsite.com/wepay_result.php&dest_ref=MTOPUP12345&pay_to_amount=10&pay_to_company=12CALL&type=mtopup&pay_to_ref1=0812345678
+
+ตัวอย่างซื้อบัตรเงินสดทรูมันนี่
+POST /client_api.json.php HTTP/1.1
+Host: www.wepay.in.th
+Content-Type: application/x-www-form-urlencoded
+username=test&password=test&resp_url=https://www.mywebsite.com/wepay_result.php&dest_ref=CASHCARD12345&pay_to_amount=150&pay_to_company=TMN&type=mtopup&pay_to_ref1=0000000000
+
+ผลการตอบกลับ
+ดู Status Code ที่หัวข้อ 10
+
+ตัวอย่างผลการตอบกลับ
+{"bill_id":12345,"code":"00000","transaction_id":1111111,"queue_id":900,"total_amount":9.65,"balance":299978.09}
+
+หมายเหตุ: รายการยังอยู่ระหว่างดำเนินการ อาจใช้เวลา 1–5 นาที คู่ค้าต้องสร้าง Script รับ Callback ตามหัวข้อ 4
+
+
+4. ส่วนการรับผลการทำรายการจาก wePAY (Callback)
+เมื่อรายการสำเร็จหรือผิดพลาด wePAY จะส่งข้อมูลไปยัง resp_url ของคู่ค้าแบบ POST
+
+Parameters
+- dest_ref: Reference ของคู่ค้า
+- transaction_id: Transaction ID ของ wePAY
+- sms: ข้อความจากผู้ให้บริการ/ธนาคาร (ถ้ามี)
+- status:
+    2 = สำเร็จ
+    4 = ล้มเหลว (คืนเงินเข้าระบบ wePAY)
+- operator_trxnsid: Transaction ID จากผู้ให้บริการ
+
+**คู่ค้าต้องตอบกลับด้วยคำว่า**
+SUCCEED|xxxx  
+หรือ  
+ERROR|xxxx
+
+ถ้าไม่ตอบ ระบบจะส่งข้อมูลซ้ำ
+
+ตัวอย่าง Callback
+dest_ref=5209d15c102b60000002
+transaction_id=3871249
+sms=success:เติมเงิน20.00บ.ให้0806548040,mCASHคงเหลือ37421.17บ. 13/08/2013 13:25 TXID:1933602087
+status=2
+operator_trxnsid=1933602087
+
+
+5. ส่วนการดึงเงินคืนจากการเติมเงินผิดพลาด
+Endpoint URL: https://www.wepay.in.th/mtopup_refund_api.php
+Method: POST (x-www-form-urlencoded)
+
+Parameters
+- transaction_id: Transaction ID ที่ผิดพลาด
+- username
+- password
+- resp_url: URL สำหรับรับผลคืนเงิน
+- dest_ref: Reference ใหม่ (ไม่จำเป็นต้องตรงกับตอนชำระ)
+- pay_to_company: เช่น 12CALL, HAPPY, TRMV, TMVH
+- new_msisdn: เบอร์ใหม่ (บางบริการต้องย้ายค่าเข้าเบอร์ใหม่)
+
+ตัวอย่างการดึงเงินคืน
+POST /mtopup_refund_api.php HTTP/1.1
+Host: www.wepay.in.th
+Content-Type: application/x-www-form-urlencoded
+username=test&password=test&resp_url=http://www.partner.com/receivestatus.asp&transaction_id=123456&dest_ref=2013813132437635022&pay_to_company=TMVH
+
+สถานะ Response ที่เป็นไปได้
+SUCCEED|RID=1234
+ERROR|ACCESS_DENIED
+ERROR|INVALID_USERNAME
+ERROR|INCORRECT_USERNAME
+ERROR|INVALID_PASSWORD
+ERROR|INCORRECT_PASSWORD
+ERROR|NOT_ALLOWED_API
+ERROR|INVALID_RESP_URL
+ERROR|INVALID_DEST_REF
+ERROR|INVALID_COMPANY
+ERROR|THIS_COMPANY_DOES_NOT_ALLOW_REFUND
+ERROR|THIS_COMPANY_REQUIRES_NEW_MSISDN
+ERROR|INVALID_TRANSACTION_ID
+ERROR|TRANSACTION_NOT_FOUND
+ERROR|TRANSACTION_IS_BEING_PROCESSED
+ERROR|TRANSACTION_IS_NOT_SUCCESS
+ERROR|EXCESS_THE_TIME_LIMIT

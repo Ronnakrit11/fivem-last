@@ -1,0 +1,474 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String         @id
+  name          String
+  email         String
+  emailVerified Boolean
+  image         String?
+  balance       Float          @default(0)
+  role          String         @default("user")
+  createdAt     DateTime
+  updatedAt     DateTime
+  sessions      Session[]
+  accounts      Account[]
+  verifiedSlips VerifiedSlip[]
+
+  @@unique([email])
+  @@map("user")
+  purchaseGames PurchaseGame[]
+  purchaseCards PurchaseCard[]
+  redeemHistories RedeemHistory[]
+  gameItemOrders GameItemOrder[]
+  auctionBids AuctionBid[]
+  userSellItems UserSellItem[]
+}
+
+model Session {
+  id        String   @id
+  expiresAt DateTime
+  token     String
+  createdAt DateTime
+  updatedAt DateTime
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([token])
+  @@map("session")
+}
+
+model Account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime
+  updatedAt             DateTime
+
+  @@map("account")
+}
+
+model Verification {
+  id         String    @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime?
+  updatedAt  DateTime?
+
+  @@map("verification")
+}
+
+model ProductPrice {
+  id         String   @id @default(cuid())
+  productId  String   @unique
+  price      Float
+  updatedBy  String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@map("product_price")
+}
+
+model FeaturedProduct {
+  id         String   @id @default(cuid())
+  productId  String   @unique
+  createdAt  DateTime @default(now())
+
+  @@map("featured_product")
+}
+
+model Product {
+  id          String   @id
+  name        String
+  price       Float
+  pricevip    Float
+  agent_price Float
+  img         String  @default("-")
+  des         String   @default("")
+  category    String   @default("")
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("product")
+}
+
+model Game {
+  id          String   @id @default(uuid())
+  sort        Int      @default(0)
+  name        String
+  icon         String  @default("-")
+  description         String   @default("")
+  isPlayerId Boolean @default(false)
+  playerFieldName String @default("UID")
+  isServer Boolean @default(false)
+  isActive    Boolean  @default(true)
+  isFeatured  Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("game")
+  packages Package[]
+  mixPackages MixPackage[]
+  servers Server[]
+}
+
+model Server {
+  id          String   @id @default(uuid())
+  name        String
+  serverCode String // For Wepay API
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  gameId String
+  game Game @relation(fields: [gameId], references: [id], onDelete: Cascade)
+
+  @@map("server")
+  purchaseGames PurchaseGame[]
+}
+
+model Package {
+  id          String   @id @default(uuid())
+  sort        Int      @default(0)
+  name        String
+  price       Decimal @default(0) @db.Decimal(10, 2)
+  priceVip    Decimal @default(0) @db.Decimal(10, 2)
+  priceAgent  Decimal @default(0) @db.Decimal(10, 2)
+  cost        Decimal @default(0) @db.Decimal(10, 2)
+  gameCode    String?
+  packageCode String?
+  icon         String  @default("")
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  gameId      String
+  game        Game     @relation(fields: [gameId], references: [id], onDelete: Cascade)
+
+  @@map("package")
+  purchaseGames PurchaseGame[]
+}
+
+model MixPackage {
+  id          String   @id @default(uuid())
+  sort        Int      @default(0)
+  name        String
+  price       Decimal @default(0) @db.Decimal(10, 2)
+  priceVip    Decimal @default(0) @db.Decimal(10, 2)
+  priceAgent  Decimal @default(0) @db.Decimal(10, 2)
+  cost        Decimal @default(0) @db.Decimal(10, 2)
+  icon         String  @default("")
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  items Json @default("[]")
+
+  gameId      String
+  game        Game     @relation(fields: [gameId], references: [id], onDelete: Cascade)
+
+  @@map("mix_package")
+  purchaseGames PurchaseGame[]
+}
+
+model PurchaseGame {
+  id          String   @id @default(uuid())
+  playerId String? // isPlayerId = true
+  serverId String? // isServer = true
+  server Server? @relation(fields: [serverId], references: [id], onDelete: SetNull)
+  paid        Decimal @default(0) @db.Decimal(10, 2)
+  status      PurchaseGameStatus @default(PENDING)
+  beforeBalance Decimal @default(0) @db.Decimal(10, 2)
+  afterBalance Decimal @default(0) @db.Decimal(10, 2)
+  content String?
+  wepayTxnId String?
+  operatorId    String?
+  wepayTxnMessage String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  userId      String
+  packageId   String?
+  mixPackageId String?
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  package     Package?  @relation(fields: [packageId], references: [id], onDelete: SetNull)
+  mixPackage MixPackage? @relation(fields: [mixPackageId], references: [id], onDelete: SetNull)
+
+  @@map("purchase_game")
+}
+
+enum PurchaseGameStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  REFUND
+}
+
+model Card {
+  id          String   @id @default(uuid())
+  sort        Int      @default(0)
+  name        String
+  icon         String  @default("-")
+  description         String   @default("")
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("card")
+  cardOptions CardOption[]
+}
+
+model CardOption {
+  id          String   @id @default(uuid())
+  sort        Int      @default(0)
+  name        String
+  price       Decimal @default(0) @db.Decimal(10, 2)
+  priceVip    Decimal @default(0) @db.Decimal(10, 2)
+  priceAgent  Decimal @default(0) @db.Decimal(10, 2)
+  cost        Decimal @default(0) @db.Decimal(10, 2)
+  gameCode    String?
+  packageCode String?
+  icon         String  @default("")
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  cardId      String
+  card        Card     @relation(fields: [cardId], references: [id], onDelete: Cascade)
+
+  @@map("card_option")
+  purchaseCards PurchaseCard[]
+}
+
+model PurchaseCard {
+  id          String   @id @default(uuid())
+  amount      Int @default(0)
+  paid        Decimal @default(0) @db.Decimal(10, 2)
+  status      PurchaseCardStatus @default(PENDING)
+  beforeBalance Decimal @default(0) @db.Decimal(10, 2)
+  afterBalance Decimal @default(0) @db.Decimal(10, 2)
+  content String?
+  wepayTxnId String?
+  operatorId    String?
+  wepayTxnMessage String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  userId      String
+  cardOptionId   String?
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cardOption     CardOption?  @relation(fields: [cardOptionId], references: [id], onDelete: SetNull)
+
+  @@map("purchase_card")
+}
+
+enum PurchaseCardStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  REFUND
+}
+
+model PurchaseHistory {
+  id          String   @id @default(cuid())
+  userId      String
+  productId   String
+  productName String
+  price       Float
+  prize       String
+  reference   String   @unique
+  status      String   @default("success")
+  createdAt   DateTime @default(now())
+
+  @@map("purchase_history")
+}
+
+model VerifiedSlip {
+  id           String   @id @default(cuid())
+  payloadHash  String   @unique
+  transRef     String   @unique
+  amount       Float
+  userId       String
+  user         User     @relation(fields: [userId], references: [id])
+  verifiedAt   DateTime @default(now())
+
+  @@index([payloadHash])
+  @@index([transRef])
+  @@index([userId])
+  @@map("verified_slip")
+}
+
+model RedeemHistory {
+  id           String   @id @default(cuid())
+  payloadHash  String   @unique
+  amount       Float
+  userId       String
+  user         User     @relation(fields: [userId], references: [id])
+  redeemedAt   DateTime @default(now())
+
+  @@index([payloadHash])
+  @@index([userId])
+  @@map("redeem_history")
+}
+
+model Article {
+  id          String   @id @default(cuid())
+  title       String
+  description String   @db.Text
+  keywords    String   @default("")
+  slug        String   @unique
+  coverImage  String?
+  content     String   @db.Text
+  published   Boolean  @default(false)
+  authorId    String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([slug])
+  @@index([published])
+  @@map("article")
+}
+
+model WebsiteSettings {
+  id                     String   @id @default(cuid())
+  navbarColor            String   @default("rgba(15, 23, 42, 0.7)")
+  backgroundColor        String   @default("#0a0e1a")
+  bottomNavColor         String   @default("rgba(15, 23, 42, 0.7)")
+  homeButtonBgColor      String   @default("rgba(255, 255, 255, 0.1)")
+  homeButtonTextColor    String   @default("#d1d5db")
+  homeButtonActiveBg     String   @default("rgba(255, 255, 255, 0.1)")
+  homeButtonActiveText   String   @default("#a78bfa")
+  bottomNavIconColor     String   @default("#d1d5db")
+  bottomNavTextColor     String   @default("#d1d5db")
+  bottomNavActiveIcon    String   @default("#fbbf24")
+  bottomNavActiveText    String   @default("#fbbf24")
+  logoUrl                String?
+  bannerUrl              String?
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  @@map("website_settings")
+}
+
+model GameItem {
+  id              String    @id @default(cuid())
+  name            String
+  description     String    @db.Text
+  image           String    @default("")
+  price           Float     @default(0)
+  isCustomPrice   Boolean   @default(false)
+  stock           Int       @default(0)
+  isUnlimitedStock Boolean  @default(true)
+  isAuction       Boolean   @default(false)
+  auctionEndDate  DateTime?
+  isActive        Boolean   @default(true)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  orders          GameItemOrder[]
+  auctionBids     AuctionBid[]
+
+  @@map("game_item")
+}
+
+model GameItemOrder {
+  id              String   @id @default(cuid())
+  gameItemId      String
+  gameItem        GameItem @relation(fields: [gameItemId], references: [id])
+  userId          String
+  user            User     @relation(fields: [userId], references: [id])
+  amount          Float
+  status          GameItemOrderStatus @default(PENDING)
+  note            String   @default("") @db.Text
+  buyerName       String   @default("")
+  buyerPhone      String   @default("")
+  buyerBankAccount String  @default("")
+  slipImage       String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("game_item_order")
+}
+
+enum GameItemOrderStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  COMPLETED
+}
+
+model AuctionBid {
+  id          String    @id @default(cuid())
+  gameItemId  String
+  gameItem    GameItem  @relation(fields: [gameItemId], references: [id])
+  userId      String
+  user        User      @relation(fields: [userId], references: [id])
+  amount      Float
+  status      AuctionBidStatus @default(PENDING)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@map("auction_bid")
+}
+
+enum AuctionBidStatus {
+  PENDING
+  WON
+  LOST
+}
+
+model BankAccount {
+  id            String   @id @default(cuid())
+  bankName      String
+  accountNumber String
+  accountName   String
+  qrCodeUrl     String?
+  isActive      Boolean  @default(true)
+  sortOrder     Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("bank_account")
+}
+
+model UserSellItem {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String
+  description String   @db.Text
+  price       Float
+  image       String?
+  status      String   @default("PENDING") // PENDING, APPROVED, REJECTED
+  adminNote   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("user_sell_item")
+}
