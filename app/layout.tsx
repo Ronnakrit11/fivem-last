@@ -20,16 +20,16 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://infinitygamecenter.com"),
+  metadataBase: new URL("https://velounity.com"),
   title: {
-    default: "infinitygamecenter | บริการเติมเกมออนไลน์ เเละจำหน่ายเเอพพรีเมี่ยมราคาถูก",
-    template: "%s | infinitygamecenter",
+    default: "velounity | บริการเติมเกมออนไลน์ เเละจำหน่ายเเอพพรีเมี่ยมราคาถูก",
+    template: "%s | velounity",
   },
   description: "เติมเกมออนไลน์ รวดเร็ว ปลอดภัย ราคาถูก รองรับทุกเกมดัง เติมง่ายผ่านระบบอัตโนมัติ",
-  keywords: ["เติมเกม", "topup", "เติมเงินเกม", "ซื้อไอเทม", "เติมเกมออนไลน์", "infinitygamecenter"],
-  authors: [{ name: "infinitygamecenter" }],
-  creator: "infinitygamecenter",
-  publisher: "infinitygamecenter",
+  keywords: ["เติมเกม", "topup", "เติมเงินเกม", "ซื้อไอเทม", "เติมเกมออนไลน์", "velounity"],
+  authors: [{ name: "velounity" }],
+  creator: "velounity",
+  publisher: "velounity",
   formatDetection: {
     email: false,
     address: false,
@@ -42,16 +42,16 @@ export const metadata: Metadata = {
   
   // Open Graph (Facebook, LinkedIn, etc.)
   openGraph: {
-    title: "infinitygamecenter | บริการเติมเกมออนไลน์",
+    title: "velounity | บริการเติมเกมออนไลน์",
     description: "เติมเกมออนไลน์ รวดเร็ว ปลอดภัย ราคาถูก รองรับทุกเกมดัง",
-    url: "https://infinitygamecenter.com",
-    siteName: "infinitygamecenter",
+    url: "https://velounity.com",
+    siteName: "velounity",
     images: [
       {
-        url: "https://infinitygamecenter.com/banner.jpg",
+        url: "https://velounity.com/banner.jpg",
         width: 1200,
         height: 630,
-        alt: "infinitygamecenter - บริการเติมเกมออนไลน์",
+        alt: "velounity - บริการเติมเกมออนไลน์",
       },
     ],
     locale: "th_TH",
@@ -61,10 +61,10 @@ export const metadata: Metadata = {
   // Twitter Card
   twitter: {
     card: "summary_large_image",
-    title: "infinitygamecenter | บริการเติมเกมออนไลน์",
+    title: "velounity | บริการเติมเกมออนไลน์",
     description: "เติมเกมออนไลน์ รวดเร็ว ปลอดภัย ราคาถูก รองรับทุกเกมดัง",
-    images: ["https://infinitygamecenter.com/banner.jpg"],
-    creator: "@infinitygamecenter",
+    images: ["https://velounity.com/banner.jpg"],
+    creator: "@velounity",
   },
 
   // Robots

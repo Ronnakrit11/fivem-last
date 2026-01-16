@@ -72,7 +72,7 @@ export async function generateMetadata(
 
   if (!article) {
     return {
-      title: "บทความไม่พบ | infinitygamecenter",
+      title: "บทความไม่พบ | velounity",
       description: "ไม่พบบทความที่คุณค้นหา",
     };
   }
@@ -80,7 +80,7 @@ export async function generateMetadata(
   const keywords = article.keywords ? article.keywords.split(",").map(k => k.trim()) : [];
 
   return {
-    title: `${article.title} | infinitygamecenter`,
+    title: `${article.title} | velounity`,
     description: article.description || article.title,
     keywords: keywords,
     openGraph: {

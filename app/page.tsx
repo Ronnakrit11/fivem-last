@@ -248,7 +248,7 @@ export default async function Home() {
         <footer className="border-t border-white/5 bg-slate-950/50 backdrop-blur-xl text-white py-12">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center">
-              <h3 className="text-2xl font-bold mb-4 bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">infinitygamecenter</h3>
+              <h3 className="text-2xl font-bold mb-4 bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">velounity</h3>
               <p className="text-slate-400 mb-8 max-w-md mx-auto">
                 A demonstration of modern authentication patterns and best
                 practices 

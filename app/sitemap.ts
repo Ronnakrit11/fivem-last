@@ -1,7 +1,7 @@
 import { MetadataRoute } from 'next'
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const baseUrl = 'https://infinitygamecenter.com'
+  const baseUrl = 'https://velounity.com'
   
   // Static pages
   const staticPages = [
