@@ -27,6 +27,12 @@ interface SellItem {
   createdAt: Date;
 }
 
+interface Catalog {
+  id: string;
+  name: string;
+  icon: string;
+}
+
 export default function UserSellsPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
@@ -34,6 +40,8 @@ export default function UserSellsPage() {
   const [updating, setUpdating] = useState<string | null>(null);
   const [selectedItem, setSelectedItem] = useState<SellItem | null>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
+  const [selectedCatalog, setSelectedCatalog] = useState<string>("all");
+  const [catalogs, setCatalogs] = useState<Catalog[]>([]);
 
   const fetchSellItems = () => {
     fetch("/api/admin/user-sells")
@@ -51,6 +59,16 @@ export default function UserSellsPage() {
       .then(data => {
         if (data) {
           setSellItems(data.sellItems || []);
+          // Extract unique catalogs from sell items
+          const uniqueCatalogs: Catalog[] = [];
+          const catalogIds = new Set<string>();
+          data.sellItems?.forEach((item: SellItem) => {
+            if (item.catalog && !catalogIds.has(item.catalog.id)) {
+              catalogIds.add(item.catalog.id);
+              uniqueCatalogs.push(item.catalog);
+            }
+          });
+          setCatalogs(uniqueCatalogs);
         }
       })
       .catch(err => {
@@ -64,6 +82,13 @@ export default function UserSellsPage() {
   useEffect(() => {
     fetchSellItems();
   }, [router]);
+
+  // Filter items by selected catalog
+  const filteredItems = sellItems.filter(item => {
+    if (selectedCatalog === "all") return true;
+    if (selectedCatalog === "uncategorized") return !item.catalog;
+    return item.catalog?.id === selectedCatalog;
+  });
 
   const updateStatus = async (id: string, status: string) => {
     setUpdating(id);
@@ -133,11 +158,13 @@ export default function UserSellsPage() {
   };
 
   const stats = {
-    total: sellItems.length,
-    pending: sellItems.filter(i => i.status === "PENDING").length,
-    approved: sellItems.filter(i => i.status === "APPROVED").length,
-    rejected: sellItems.filter(i => i.status === "REJECTED").length,
+    total: filteredItems.length,
+    pending: filteredItems.filter(i => i.status === "PENDING").length,
+    approved: filteredItems.filter(i => i.status === "APPROVED").length,
+    rejected: filteredItems.filter(i => i.status === "REJECTED").length,
   };
+
+  const uncategorizedCount = sellItems.filter(i => !i.catalog).length;
 
   const openDetail = (item: SellItem) => {
     setSelectedItem(item);
@@ -166,7 +193,7 @@ export default function UserSellsPage() {
                   รายการ User ขาย
                 </h1>
                 <p className="text-gray-600">
-                  สินค้าที่ผู้ใช้ต้องการขายให้เรา ({sellItems.length} รายการ)
+                  สินค้าที่ผู้ใช้ต้องการขายให้เรา ({filteredItems.length} รายการ)
                 </p>
               </div>
             </div>
@@ -177,6 +204,50 @@ export default function UserSellsPage() {
               <FolderOpen className="w-5 h-5" />
               จัดการหมวดหมู่
             </Link>
+          </div>
+        </div>
+
+        {/* Catalog Filter Tabs */}
+        <div className="mb-6 overflow-x-auto">
+          <div className="flex gap-2 min-w-max">
+            <button
+              onClick={() => setSelectedCatalog("all")}
+              className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
+                selectedCatalog === "all"
+                  ? "bg-purple-600 text-white"
+                  : "bg-white text-gray-700 border border-gray-200 hover:bg-gray-50"
+              }`}
+            >
+              ทั้งหมด ({sellItems.length})
+            </button>
+            {catalogs.map((cat) => {
+              const count = sellItems.filter(i => i.catalog?.id === cat.id).length;
+              return (
+                <button
+                  key={cat.id}
+                  onClick={() => setSelectedCatalog(cat.id)}
+                  className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
+                    selectedCatalog === cat.id
+                      ? "bg-purple-600 text-white"
+                      : "bg-white text-gray-700 border border-gray-200 hover:bg-gray-50"
+                  }`}
+                >
+                  {cat.icon ? `${cat.icon} ` : ""}{cat.name} ({count})
+                </button>
+              );
+            })}
+            {uncategorizedCount > 0 && (
+              <button
+                onClick={() => setSelectedCatalog("uncategorized")}
+                className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
+                  selectedCatalog === "uncategorized"
+                    ? "bg-gray-600 text-white"
+                    : "bg-white text-gray-700 border border-gray-200 hover:bg-gray-50"
+                }`}
+              >
+                ไม่มีหมวดหมู่ ({uncategorizedCount})
+              </button>
+            )}
           </div>
         </div>
 
@@ -220,8 +291,8 @@ export default function UserSellsPage() {
                 <div className="h-4 bg-gray-200 rounded animate-pulse w-1/2" />
               </div>
             ))
-          ) : sellItems.length > 0 ? (
-            sellItems.map((item) => (
+          ) : filteredItems.length > 0 ? (
+            filteredItems.map((item) => (
               <div 
                 key={item.id} 
                 className="bg-white rounded-xl shadow-md border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow cursor-pointer"
