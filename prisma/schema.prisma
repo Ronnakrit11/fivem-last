@@ -457,10 +457,27 @@ model BankAccount {
   @@map("bank_account")
 }
 
+model SellCatalog {
+  id          String   @id @default(cuid())
+  name        String
+  description String   @default("") @db.Text
+  icon        String   @default("")
+  isActive    Boolean  @default(true)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  sellItems   UserSellItem[]
+
+  @@map("sell_catalog")
+}
+
 model UserSellItem {
   id          String   @id @default(cuid())
   userId      String
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  catalogId   String?
+  catalog     SellCatalog? @relation(fields: [catalogId], references: [id], onDelete: SetNull)
   name        String
   description String   @db.Text
   price       Float

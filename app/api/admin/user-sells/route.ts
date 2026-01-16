@@ -37,6 +37,13 @@ export async function GET(request: NextRequest) {
             email: true,
           },
         },
+        catalog: {
+          select: {
+            id: true,
+            name: true,
+            icon: true,
+          },
+        },
       },
       orderBy: { createdAt: "desc" },
     });

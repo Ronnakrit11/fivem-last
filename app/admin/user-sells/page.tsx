@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, ShoppingBag, User, CheckCircle, XCircle, Clock, Loader2, X } from "lucide-react";
+import { ArrowLeft, ShoppingBag, User, CheckCircle, XCircle, Clock, Loader2, X, FolderOpen } from "lucide-react";
 import Link from "next/link";
 
 interface SellItem {
@@ -13,6 +13,11 @@ interface SellItem {
     name: string;
     email: string;
   };
+  catalog: {
+    id: string;
+    name: string;
+    icon: string;
+  } | null;
   name: string;
   description: string;
   price: number;
@@ -165,6 +170,13 @@ export default function UserSellsPage() {
                 </p>
               </div>
             </div>
+            <Link
+              href="/admin/sell-catalogs"
+              className="px-4 py-2 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 flex items-center gap-2"
+            >
+              <FolderOpen className="w-5 h-5" />
+              จัดการหมวดหมู่
+            </Link>
           </div>
         </div>
 
@@ -229,7 +241,14 @@ export default function UserSellsPage() {
 
                       {/* Item Info */}
                       <div>
-                        <h3 className="font-semibold text-gray-900">{item.name}</h3>
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-semibold text-gray-900">{item.name}</h3>
+                          {item.catalog && (
+                            <span className="px-2 py-0.5 bg-purple-100 text-purple-700 text-xs rounded-full">
+                              {item.catalog.icon ? `${item.catalog.icon} ` : ""}{item.catalog.name}
+                            </span>
+                          )}
+                        </div>
                         <p className="text-sm text-gray-600">
                           <span className="font-medium">{item.user?.name || "-"}</span>
                           <span className="ml-2 text-gray-400">• {item.user?.email}</span>

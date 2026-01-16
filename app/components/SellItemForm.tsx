@@ -1,8 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Package, Upload, X, Loader2, CheckCircle } from "lucide-react";
+import { Package, Upload, X, Loader2, CheckCircle, ChevronDown } from "lucide-react";
+
+interface Catalog {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+}
 
 export default function SellItemForm() {
   const router = useRouter();
@@ -10,11 +17,32 @@ export default function SellItemForm() {
   const [loading, setLoading] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [result, setResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [catalogs, setCatalogs] = useState<Catalog[]>([]);
+  const [loadingCatalogs, setLoadingCatalogs] = useState(false);
   
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [price, setPrice] = useState("");
   const [image, setImage] = useState("");
+  const [catalogId, setCatalogId] = useState("");
+
+  useEffect(() => {
+    const fetchCatalogs = async () => {
+      setLoadingCatalogs(true);
+      try {
+        const res = await fetch("/api/sell-catalogs");
+        const data = await res.json();
+        if (data.success) {
+          setCatalogs(data.catalogs || []);
+        }
+      } catch (err) {
+        console.error("Error fetching catalogs:", err);
+      } finally {
+        setLoadingCatalogs(false);
+      }
+    };
+    fetchCatalogs();
+  }, []);
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -63,6 +91,7 @@ export default function SellItemForm() {
           description,
           price: parseFloat(price),
           image,
+          catalogId: catalogId || null,
         }),
       });
 
@@ -76,6 +105,7 @@ export default function SellItemForm() {
           setDescription("");
           setPrice("");
           setImage("");
+          setCatalogId("");
           setResult(null);
         }, 2000);
       } else {
@@ -143,6 +173,30 @@ export default function SellItemForm() {
                 required
               />
             </div>
+
+            {/* Catalog */}
+            {catalogs.length > 0 && (
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  หมวดหมู่สินค้า
+                </label>
+                <div className="relative">
+                  <select
+                    value={catalogId}
+                    onChange={(e) => setCatalogId(e.target.value)}
+                    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-green-500 appearance-none cursor-pointer"
+                  >
+                    <option value="" className="bg-slate-800">เลือกหมวดหมู่ (ไม่บังคับ)</option>
+                    {catalogs.map((cat) => (
+                      <option key={cat.id} value={cat.id} className="bg-slate-800">
+                        {cat.icon ? `${cat.icon} ` : ""}{cat.name}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
+                </div>
+              </div>
+            )}
 
             {/* Price */}
             <div>
@@ -223,6 +277,7 @@ export default function SellItemForm() {
                   setDescription("");
                   setPrice("");
                   setImage("");
+                  setCatalogId("");
                   setResult(null);
                 }}
                 className="flex-1 px-6 py-3 bg-white/10 text-white rounded-xl font-medium hover:bg-white/20 transition-colors"
