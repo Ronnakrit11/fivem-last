@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Fetch all data in parallel including admin checks
+    // Fetch all data in parallel including admin checkss
     const [user, gameItems] = await Promise.all([
       prisma.user.findUnique({
         where: { id: session.user.id },
