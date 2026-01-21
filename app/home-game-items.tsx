@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Crown, ShoppingBag, X, CheckCircle, AlertCircle, Loader2, Building2, Upload, Image as ImageIcon } from "lucide-react";
+import { Crown, ShoppingBag, X, CheckCircle, AlertCircle, Loader2, Building2, Upload, Image as ImageIcon, Shield } from "lucide-react";
 
 interface GameItem {
   id: string;
@@ -25,6 +25,12 @@ interface BankAccount {
   qrCodeUrl: string | null;
 }
 
+interface PurchasePolicy {
+  id: string;
+  title: string;
+  content: string;
+}
+
 export default function HomeGameItems({ items }: { items: GameItem[] }) {
   const router = useRouter();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -40,11 +46,15 @@ export default function HomeGameItems({ items }: { items: GameItem[] }) {
   // Step 2: Payment modal
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
+  const [selectedBankAccount, setSelectedBankAccount] = useState<BankAccount | null>(null);
   const [buyerName, setBuyerName] = useState("");
   const [buyerPhone, setBuyerPhone] = useState("");
   const [buyerBankAccount, setBuyerBankAccount] = useState("");
   const [slipImage, setSlipImage] = useState<string | null>(null);
   const [uploadingSlip, setUploadingSlip] = useState(false);
+  const [purchasePolicy, setPurchasePolicy] = useState<PurchasePolicy | null>(null);
+  const [acceptedPurchasePolicy, setAcceptedPurchasePolicy] = useState(false);
+  const [showPurchasePolicyModal, setShowPurchasePolicyModal] = useState(false);
 
   // Check login status
   useEffect(() => {
@@ -93,6 +103,19 @@ export default function HomeGameItems({ items }: { items: GameItem[] }) {
       }
     } catch (error) {
       console.error("Error fetching bank accounts:", error);
+    }
+  };
+
+  // Fetch purchase policy
+  const fetchPurchasePolicy = async () => {
+    try {
+      const res = await fetch("/api/purchase-policy");
+      const data = await res.json();
+      if (data.policy) {
+        setPurchasePolicy(data.policy);
+      }
+    } catch (error) {
+      console.error("Error fetching purchase policy:", error);
     }
   };
 
@@ -170,10 +193,13 @@ export default function HomeGameItems({ items }: { items: GameItem[] }) {
     // For regular items, show payment modal
     setShowModal(false);
     fetchBankAccounts();
+    fetchPurchasePolicy();
     setBuyerName("");
     setBuyerPhone("");
     setBuyerBankAccount("");
     setSlipImage(null);
+    setSelectedBankAccount(null);
+    setAcceptedPurchasePolicy(false);
     setResult(null);
     setShowPaymentModal(true);
   };
@@ -182,6 +208,10 @@ export default function HomeGameItems({ items }: { items: GameItem[] }) {
     if (!selectedItem) return;
 
     // Validate buyer info
+    if (!selectedBankAccount) {
+      setResult({ success: false, message: "กรุณาเลือกวิธีการชำระเงิน" });
+      return;
+    }
     if (!buyerName.trim()) {
       setResult({ success: false, message: "กรุณากรอกชื่อ-นามสกุล" });
       return;
@@ -194,8 +224,8 @@ export default function HomeGameItems({ items }: { items: GameItem[] }) {
       setResult({ success: false, message: "กรุณากรอกเลขบัญชีผู้โอน" });
       return;
     }
-    if (!slipImage) {
-      setResult({ success: false, message: "กรุณาแนบสลิปการโอนเงิน" });
+        if (purchasePolicy && !acceptedPurchasePolicy) {
+      setResult({ success: false, message: "กรุณายอมรับนโยบายการซื้อสินค้า" });
       return;
     }
 
@@ -212,7 +242,9 @@ export default function HomeGameItems({ items }: { items: GameItem[] }) {
           buyerName: buyerName.trim(),
           buyerPhone: buyerPhone.trim(),
           buyerBankAccount: buyerBankAccount.trim(),
+          selectedPaymentMethod: selectedBankAccount ? `${selectedBankAccount.bankName} - ${selectedBankAccount.accountNumber}` : "",
           slipImage,
+          acceptedPurchasePolicy,
         }),
       });
 
@@ -534,20 +566,41 @@ export default function HomeGameItems({ items }: { items: GameItem[] }) {
                 </div>
               </div>
 
-              {/* Bank Accounts */}
+              {/* Bank Accounts - Select Payment Method */}
               <div className="mb-6">
                 <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
                   <Building2 className="w-4 h-4 text-emerald-400" />
-                  โอนเงินไปที่บัญชี
+                  เลือกวิธีการชำระเงิน <span className="text-red-400">*</span>
                 </h3>
                 {bankAccounts.length > 0 ? (
                   <div className="space-y-3">
                     {bankAccounts.map((bank) => (
-                      <div key={bank.id} className="bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-3">
-                        <p className="font-semibold text-emerald-400">{bank.bankName}</p>
-                        <p className="text-white text-lg font-mono">{bank.accountNumber}</p>
-                        <p className="text-gray-400 text-sm">{bank.accountName}</p>
-                        {bank.qrCodeUrl && (
+                      <div 
+                        key={bank.id} 
+                        onClick={() => setSelectedBankAccount(bank)}
+                        className={`cursor-pointer rounded-lg p-3 transition-all ${
+                          selectedBankAccount?.id === bank.id 
+                            ? "bg-emerald-500/20 border-2 border-emerald-500" 
+                            : "bg-white/5 border border-white/10 hover:border-emerald-500/50"
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                            selectedBankAccount?.id === bank.id 
+                              ? "border-emerald-500 bg-emerald-500" 
+                              : "border-gray-500"
+                          }`}>
+                            {selectedBankAccount?.id === bank.id && (
+                              <CheckCircle className="w-3 h-3 text-white" />
+                            )}
+                          </div>
+                          <div className="flex-1">
+                            <p className="font-semibold text-emerald-400">{bank.bankName}</p>
+                            <p className="text-white text-lg font-mono">{bank.accountNumber}</p>
+                            <p className="text-gray-400 text-sm">{bank.accountName}</p>
+                          </div>
+                        </div>
+                        {selectedBankAccount?.id === bank.id && bank.qrCodeUrl && (
                           <div className="mt-3 pt-3 border-t border-emerald-500/20">
                             <p className="text-xs text-gray-400 mb-2 flex items-center gap-1">
                               <Building2 className="w-3 h-3" />
@@ -644,6 +697,29 @@ export default function HomeGameItems({ items }: { items: GameItem[] }) {
                     </label>
                   )}
                 </div>
+
+                {/* Purchase Policy Acceptance */}
+                {purchasePolicy && (
+                  <div className="flex items-start gap-3 p-3 bg-white/5 rounded-lg border border-white/10">
+                    <input
+                      type="checkbox"
+                      id="acceptPurchasePolicy"
+                      checked={acceptedPurchasePolicy}
+                      onChange={(e) => setAcceptedPurchasePolicy(e.target.checked)}
+                      className="mt-1 w-4 h-4 text-green-600 rounded focus:ring-green-500 bg-white/10 border-white/20"
+                    />
+                    <label htmlFor="acceptPurchasePolicy" className="text-sm text-gray-300">
+                      ข้าพเจ้ายอมรับ{" "}
+                      <button
+                        type="button"
+                        onClick={() => setShowPurchasePolicyModal(true)}
+                        className="text-green-400 hover:text-green-300 underline"
+                      >
+                        {purchasePolicy.title}
+                      </button>
+                    </label>
+                  </div>
+                )}
               </div>
 
               {/* Result Message */}
@@ -677,7 +753,7 @@ export default function HomeGameItems({ items }: { items: GameItem[] }) {
                 </button>
                 <button
                   onClick={handleConfirmPayment}
-                  disabled={loading || result?.success}
+                  disabled={loading || result?.success || (!!purchasePolicy && !acceptedPurchasePolicy)}
                   className="flex-1 px-4 py-3 rounded-lg bg-gradient-to-r from-green-600 to-emerald-600 text-white font-semibold hover:from-green-700 hover:to-emerald-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                 >
                   {loading ? (
@@ -695,6 +771,57 @@ export default function HomeGameItems({ items }: { items: GameItem[] }) {
                   )}
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Purchase Policy Modal */}
+      {showPurchasePolicyModal && purchasePolicy && (
+        <div 
+          className="fixed inset-0 bg-black/80 flex items-center justify-center z-[60] p-4"
+          onClick={() => setShowPurchasePolicyModal(false)}
+        >
+          <div 
+            className="bg-slate-900 rounded-2xl max-w-2xl w-full max-h-[80vh] overflow-hidden shadow-2xl border border-white/10"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-6 border-b border-white/10 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Shield className="w-6 h-6 text-green-400" />
+                <h3 className="text-xl font-bold text-gray-100">{purchasePolicy.title}</h3>
+              </div>
+              <button
+                onClick={() => setShowPurchasePolicyModal(false)}
+                className="text-gray-400 hover:text-gray-200 transition-colors"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            
+            <div className="p-6 overflow-y-auto max-h-[60vh]">
+              <div 
+                className="prose prose-invert prose-sm max-w-none text-gray-300"
+                dangerouslySetInnerHTML={{ __html: purchasePolicy.content }}
+              />
+            </div>
+
+            <div className="p-6 border-t border-white/10 flex gap-3">
+              <button
+                onClick={() => setShowPurchasePolicyModal(false)}
+                className="flex-1 px-4 py-3 bg-white/10 text-gray-200 rounded-xl font-medium hover:bg-white/15 transition-colors"
+              >
+                ปิด
+              </button>
+              <button
+                onClick={() => {
+                  setAcceptedPurchasePolicy(true);
+                  setShowPurchasePolicyModal(false);
+                }}
+                className="flex-1 px-4 py-3 bg-green-600 text-white rounded-xl font-medium hover:bg-green-700 transition-colors"
+              >
+                ยอมรับนโยบาย
+              </button>
             </div>
           </div>
         </div>

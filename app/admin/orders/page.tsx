@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, ShoppingBag, User, CheckCircle, XCircle, Search, Clock, Loader2, Phone, CreditCard, X } from "lucide-react";
+import { ArrowLeft, ShoppingBag, User, CheckCircle, XCircle, Search, Clock, Loader2, Phone, CreditCard, X, Download, FileSpreadsheet, Shield } from "lucide-react";
+import * as XLSX from "xlsx";
 import Link from "next/link";
 
 interface GameItem {
@@ -30,7 +31,9 @@ interface Order {
   buyerName: string;
   buyerPhone: string;
   buyerBankAccount: string;
+  selectedPaymentMethod: string;
   slipImage: string | null;
+  acceptedPurchasePolicy: boolean;
   createdAt: Date;
 }
 
@@ -43,9 +46,16 @@ export default function AdminOrdersPage() {
   const [updating, setUpdating] = useState<string | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalOrders, setTotalOrders] = useState(0);
+  const pageSize = 20;
 
-  const fetchOrders = () => {
-    fetch("/api/admin/game-item-orders")
+  const fetchOrders = (page: number = 1) => {
+    setLoading(true);
+    fetch(`/api/admin/game-item-orders?page=${page}&limit=${pageSize}`)
       .then(res => {
         if (res.status === 401) {
           router.push("/auth");
@@ -60,6 +70,11 @@ export default function AdminOrdersPage() {
       .then(data => {
         if (data) {
           setOrders(data.orders || []);
+          if (data.pagination) {
+            setCurrentPage(data.pagination.page);
+            setTotalPages(data.pagination.totalPages);
+            setTotalOrders(data.pagination.total);
+          }
         }
       })
       .catch(err => {
@@ -71,8 +86,9 @@ export default function AdminOrdersPage() {
   };
 
   useEffect(() => {
-    fetchOrders();
-  }, [router]);
+    fetchOrders(1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const updateOrderStatus = async (orderId: string, status: string) => {
     setUpdating(orderId);
@@ -176,6 +192,57 @@ export default function AdminOrdersPage() {
     setShowDetailModal(true);
   };
 
+  const getStatusText = (status: string) => {
+    switch (status) {
+      case "APPROVED": return "อนุมัติแล้ว";
+      case "COMPLETED": return "เสร็จสิ้น";
+      case "PENDING": return "รออนุมัติ";
+      case "REJECTED": return "ปฏิเสธ";
+      default: return status;
+    }
+  };
+
+  const exportToExcel = () => {
+    const dataToExport = filteredOrders.map((order, index) => ({
+      "ลำดับ": index + 1,
+      "รหัสคำสั่งซื้อ": order.id,
+      "สินค้า": order.gameItem?.name || "-",
+      "ราคา (บาท)": order.amount || 0,
+      "ชื่อผู้ซื้อ": order.buyerName || "-",
+      "เบอร์โทร": order.buyerPhone || "-",
+      "เลขบัญชีผู้โอน": order.buyerBankAccount || "-",
+      "บัญชีผู้ใช้": order.user?.name || "-",
+      "อีเมล": order.user?.email || "-",
+      "สถานะ": getStatusText(order.status),
+      "วันที่สั่งซื้อ": formatDate(order.createdAt),
+      "มีสลิป": order.slipImage ? "มี" : "ไม่มี",
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(dataToExport);
+    
+    // Set column widths
+    ws["!cols"] = [
+      { wch: 6 },   // ลำดับ
+      { wch: 30 },  // รหัสคำสั่งซื้อ
+      { wch: 25 },  // สินค้า
+      { wch: 12 },  // ราคา
+      { wch: 20 },  // ชื่อผู้ซื้อ
+      { wch: 15 },  // เบอร์โทร
+      { wch: 20 },  // เลขบัญชี
+      { wch: 20 },  // บัญชีผู้ใช้
+      { wch: 25 },  // อีเมล
+      { wch: 12 },  // สถานะ
+      { wch: 20 },  // วันที่
+      { wch: 8 },   // มีสลิป
+    ];
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "คำสั่งซื้อ");
+    
+    const fileName = `orders_${new Date().toISOString().split("T")[0]}.xlsx`;
+    XLSX.writeFile(wb, fileName);
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 py-12">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -202,6 +269,14 @@ export default function AdminOrdersPage() {
                 </p>
               </div>
             </div>
+            <button
+              onClick={exportToExcel}
+              disabled={loading || filteredOrders.length === 0}
+              className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-md"
+            >
+              <FileSpreadsheet className="w-5 h-5" />
+              Export Excel
+            </button>
           </div>
         </div>
 
@@ -360,6 +435,59 @@ export default function AdminOrdersPage() {
             </div>
           )}
         </div>
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="mt-6 flex items-center justify-between bg-white rounded-xl shadow-md p-4 border border-gray-200">
+            <p className="text-sm text-gray-600">
+              แสดง {((currentPage - 1) * pageSize) + 1} - {Math.min(currentPage * pageSize, totalOrders)} จาก {totalOrders} รายการ
+            </p>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => fetchOrders(currentPage - 1)}
+                disabled={currentPage === 1 || loading}
+                className="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                ก่อนหน้า
+              </button>
+              <div className="flex items-center gap-1">
+                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                  let pageNum;
+                  if (totalPages <= 5) {
+                    pageNum = i + 1;
+                  } else if (currentPage <= 3) {
+                    pageNum = i + 1;
+                  } else if (currentPage >= totalPages - 2) {
+                    pageNum = totalPages - 4 + i;
+                  } else {
+                    pageNum = currentPage - 2 + i;
+                  }
+                  return (
+                    <button
+                      key={pageNum}
+                      onClick={() => fetchOrders(pageNum)}
+                      disabled={loading}
+                      className={`w-10 h-10 rounded-lg text-sm font-medium transition-colors ${
+                        currentPage === pageNum
+                          ? "bg-indigo-600 text-white"
+                          : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                      } disabled:opacity-50`}
+                    >
+                      {pageNum}
+                    </button>
+                  );
+                })}
+              </div>
+              <button
+                onClick={() => fetchOrders(currentPage + 1)}
+                disabled={currentPage === totalPages || loading}
+                className="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                ถัดไป
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Detail Modal */}
@@ -367,7 +495,7 @@ export default function AdminOrdersPage() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-xl">
             <div className="p-6">
-              <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-bold text-gray-900">รายละเอียดคำสั่งซื้อ</h2>
                 <button
                   onClick={() => setShowDetailModal(false)}
@@ -375,6 +503,12 @@ export default function AdminOrdersPage() {
                 >
                   <X className="w-6 h-6" />
                 </button>
+              </div>
+
+              {/* Order ID */}
+              <div className="mb-4 p-3 bg-indigo-50 rounded-lg border border-indigo-100">
+                <p className="text-xs text-indigo-600 mb-1">รหัสคำสั่งซื้อ</p>
+                <p className="font-mono text-sm text-indigo-900 break-all">{selectedOrder.id}</p>
               </div>
 
               {/* Product */}
@@ -411,6 +545,16 @@ export default function AdminOrdersPage() {
                 </div>
               </div>
 
+              {/* Selected Payment Method */}
+              {selectedOrder.selectedPaymentMethod && (
+                <div className="space-y-3 mb-6">
+                  <h4 className="font-semibold text-gray-700">วิธีการชำระเงินที่เลือก</h4>
+                  <div className="p-3 bg-blue-50 rounded-lg border border-blue-100">
+                    <p className="font-medium text-blue-800">🏦 {selectedOrder.selectedPaymentMethod}</p>
+                  </div>
+                </div>
+              )}
+
               {/* User Account */}
               <div className="space-y-3 mb-6">
                 <h4 className="font-semibold text-gray-700">บัญชีผู้ใช้</h4>
@@ -431,6 +575,21 @@ export default function AdminOrdersPage() {
                   />
                 </div>
               )}
+
+              {/* Policy Acceptance */}
+              <div className="mb-6">
+                <h4 className="font-semibold text-gray-700 mb-2">นโยบายการซื้อ</h4>
+                <div className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg ${
+                  selectedOrder.acceptedPurchasePolicy 
+                    ? "bg-green-100 text-green-800" 
+                    : "bg-gray-100 text-gray-600"
+                }`}>
+                  <Shield className="w-4 h-4" />
+                  <span className="text-sm font-medium">
+                    {selectedOrder.acceptedPurchasePolicy ? "ยอมรับนโยบายแล้ว" : "ยังไม่ได้ยอมรับนโยบาย"}
+                  </span>
+                </div>
+              </div>
 
               {/* Status */}
               <div className="mb-6">
@@ -459,6 +618,16 @@ export default function AdminOrdersPage() {
                     ปฏิเสธ
                   </button>
                 </div>
+              )}
+              {selectedOrder.status === "APPROVED" && (
+                <button
+                  onClick={() => updateOrderStatus(selectedOrder.id, "COMPLETED")}
+                  disabled={updating === selectedOrder.id}
+                  className="w-full px-4 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {updating === selectedOrder.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
+                  ทำเครื่องหมายเสร็จสิ้น
+                </button>
               )}
             </div>
           </div>

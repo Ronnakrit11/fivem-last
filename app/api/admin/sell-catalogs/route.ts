@@ -57,7 +57,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { name, description, icon, isActive, sortOrder } = body;
+    const { name, description, icon, image, isActive, sortOrder } = body;
 
     if (!name) {
       return NextResponse.json({ error: "กรุณากรอกชื่อหมวดหมู่" }, { status: 400 });
@@ -68,6 +68,7 @@ export async function POST(request: NextRequest) {
         name,
         description: description || "",
         icon: icon || "",
+        image: image || null,
         isActive: isActive ?? true,
         sortOrder: sortOrder ?? 0,
       },

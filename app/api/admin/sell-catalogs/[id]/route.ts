@@ -69,7 +69,7 @@ export async function PATCH(
 
     const { id } = await params;
     const body = await request.json();
-    const { name, description, icon, isActive, sortOrder } = body;
+    const { name, description, icon, image, isActive, sortOrder } = body;
 
     const catalog = await prisma.sellCatalog.update({
       where: { id },
@@ -77,6 +77,7 @@ export async function PATCH(
         ...(name !== undefined && { name }),
         ...(description !== undefined && { description }),
         ...(icon !== undefined && { icon }),
+        ...(image !== undefined && { image }),
         ...(isActive !== undefined && { isActive }),
         ...(sortOrder !== undefined && { sortOrder }),
       },

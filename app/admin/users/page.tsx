@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Users, Search, CheckCircle, AlertCircle, Shield, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowLeft, Users, Search, CheckCircle, AlertCircle, Shield, ChevronLeft, ChevronRight, Eye, X, Phone, Building2, CreditCard, User } from "lucide-react";
 import Link from "next/link";
 
 interface User {
@@ -10,6 +10,15 @@ interface User {
   name: string;
   email: string;
   role: string;
+  acceptedPolicy: boolean;
+  acceptedPolicyAt: Date | null;
+  fullName: string;
+  phone: string;
+  bankName: string;
+  bankAccountReceive: string;
+  bankAccountTransfer: string;
+  otherBankName: string;
+  profileCompleted: boolean;
   createdAt: Date;
   updatedAt: Date;
   purchaseCount: number;
@@ -36,6 +45,8 @@ export default function AdminUsersPage() {
     type: "success" | "error";
     message: string;
   } | null>(null);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [showDetailModal, setShowDetailModal] = useState(false);
 
   const fetchUsers = useCallback(() => {
     setLoading(true);
@@ -240,6 +251,9 @@ export default function AdminUsersPage() {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       บทบาท
                     </th>
+                    <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      นโยบาย
+                    </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       ซื้อทั้งหมด
                     </th>
@@ -260,11 +274,25 @@ export default function AdminUsersPage() {
                       <td className="px-6 py-4">
                         <div>
                           <div className="text-sm font-medium text-gray-900">
-                            {user.name}
+                            {user.fullName || user.name}
+                            {user.profileCompleted && (
+                              <span className="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-xs bg-green-100 text-green-700">✓ ข้อมูลครบ</span>
+                            )}
                           </div>
                           <div className="text-sm text-gray-500">
                             {user.email}
                           </div>
+                          {user.phone && (
+                            <div className="text-xs text-blue-600 mt-1">
+                              📱 {user.phone}
+                            </div>
+                          )}
+                          {(user.bankName || user.otherBankName) && (
+                            <div className="text-xs text-emerald-600 mt-1">
+                              🏦 {user.otherBankName || user.bankName}
+                              {user.bankAccountReceive && ` • รับ: ${user.bankAccountReceive}`}
+                            </div>
+                          )}
                           <div className="text-xs text-gray-400 mt-1">
                             ID: {user.id}
                           </div>
@@ -272,6 +300,18 @@ export default function AdminUsersPage() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         {getRoleBadge(user.role)}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-center">
+                        {user.acceptedPolicy ? (
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800">
+                            <CheckCircle className="w-3 h-3 mr-1" />
+                            ยอมรับ
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-600">
+                            ยังไม่ยอมรับ
+                          </span>
+                        )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className="text-sm text-gray-900">
@@ -290,6 +330,16 @@ export default function AdminUsersPage() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-center">
                         <div className="flex items-center justify-center gap-2">
+                          <button
+                            onClick={() => {
+                              setSelectedUser(user);
+                              setShowDetailModal(true);
+                            }}
+                            className="inline-flex items-center px-3 py-1 rounded-lg transition-colors text-sm bg-blue-500 text-white hover:bg-blue-600"
+                          >
+                            <Eye className="w-4 h-4 mr-1" />
+                            ดูข้อมูล
+                          </button>
                           <button
                             onClick={() => handleUpdateRole(user)}
                             disabled={updatingRole === user.id}
@@ -415,6 +465,160 @@ export default function AdminUsersPage() {
         )}
 
       </div>
+
+      {/* User Detail Modal */}
+      {showDetailModal && selectedUser && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-xl">
+            <div className="p-6">
+              {/* Header */}
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-bold text-gray-900">ข้อมูลผู้ใช้</h2>
+                <button
+                  onClick={() => setShowDetailModal(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+
+              {/* User Info */}
+              <div className="space-y-4">
+                {/* Basic Info */}
+                <div className="p-4 bg-indigo-50 rounded-xl border border-indigo-100">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-12 h-12 bg-indigo-500 rounded-full flex items-center justify-center">
+                      <User className="w-6 h-6 text-white" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-gray-900">{selectedUser.fullName || selectedUser.name}</p>
+                      <p className="text-sm text-gray-500">{selectedUser.email}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {selectedUser.profileCompleted ? (
+                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800">
+                        <CheckCircle className="w-3 h-3 mr-1" />
+                        ข้อมูลครบถ้วน
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-800">
+                        <AlertCircle className="w-3 h-3 mr-1" />
+                        ยังไม่กรอกข้อมูล
+                      </span>
+                    )}
+                    {selectedUser.role === "admin" && (
+                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold bg-purple-100 text-purple-800">
+                        <Shield className="w-3 h-3 mr-1" />
+                        Admin
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Contact Info */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="p-3 bg-gray-50 rounded-lg">
+                    <p className="text-xs text-gray-500 mb-1 flex items-center gap-1">
+                      <User className="w-3 h-3" /> ชื่อ-นามสกุล
+                    </p>
+                    <p className="font-medium text-gray-900">{selectedUser.fullName || "-"}</p>
+                  </div>
+                  <div className="p-3 bg-gray-50 rounded-lg">
+                    <p className="text-xs text-gray-500 mb-1 flex items-center gap-1">
+                      <Phone className="w-3 h-3" /> เบอร์โทร
+                    </p>
+                    <p className="font-medium text-gray-900">{selectedUser.phone || "-"}</p>
+                  </div>
+                </div>
+
+                {/* Bank Info */}
+                <div className="p-4 bg-emerald-50 rounded-xl border border-emerald-100">
+                  <h4 className="font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                    <Building2 className="w-4 h-4 text-emerald-600" />
+                    ข้อมูลธนาคาร
+                  </h4>
+                  <div className="space-y-3">
+                    <div className="p-3 bg-white rounded-lg">
+                      <p className="text-xs text-gray-500 mb-1">ธนาคาร</p>
+                      <p className="font-medium text-gray-900">
+                        {selectedUser.otherBankName || selectedUser.bankName || "-"}
+                      </p>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="p-3 bg-white rounded-lg">
+                        <p className="text-xs text-gray-500 mb-1 flex items-center gap-1">
+                          <CreditCard className="w-3 h-3" /> เลขบัญชีรับเงิน
+                        </p>
+                        <p className="font-medium text-gray-900 font-mono text-sm">
+                          {selectedUser.bankAccountReceive || "-"}
+                        </p>
+                      </div>
+                      <div className="p-3 bg-white rounded-lg">
+                        <p className="text-xs text-gray-500 mb-1 flex items-center gap-1">
+                          <CreditCard className="w-3 h-3" /> เลขบัญชีโอนเงิน
+                        </p>
+                        <p className="font-medium text-gray-900 font-mono text-sm">
+                          {selectedUser.bankAccountTransfer || "-"}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Stats */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="p-3 bg-blue-50 rounded-lg border border-blue-100">
+                    <p className="text-xs text-blue-600 mb-1">ซื้อทั้งหมด</p>
+                    <p className="text-xl font-bold text-blue-700">{selectedUser.purchaseCount} ครั้ง</p>
+                  </div>
+                  <div className="p-3 bg-green-50 rounded-lg border border-green-100">
+                    <p className="text-xs text-green-600 mb-1">ยอดซื้อรวม</p>
+                    <p className="text-xl font-bold text-green-700">฿{selectedUser.totalSpent.toFixed(2)}</p>
+                  </div>
+                </div>
+
+                {/* Other Info */}
+                <div className="p-3 bg-gray-50 rounded-lg">
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <p className="text-xs text-gray-500">User ID</p>
+                      <p className="font-mono text-xs text-gray-700 break-all">{selectedUser.id}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500">วันที่สมัคร</p>
+                      <p className="text-gray-700">{new Date(selectedUser.createdAt).toLocaleDateString("th-TH")}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Policy Status */}
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-gray-600">นโยบาย:</span>
+                  {selectedUser.acceptedPolicy ? (
+                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800">
+                      <CheckCircle className="w-3 h-3 mr-1" />
+                      ยอมรับแล้ว
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-600">
+                      ยังไม่ยอมรับ
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Close Button */}
+              <button
+                onClick={() => setShowDetailModal(false)}
+                className="w-full mt-6 px-4 py-3 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200 transition-colors"
+              >
+                ปิด
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

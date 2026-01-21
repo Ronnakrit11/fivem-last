@@ -16,25 +16,37 @@ export async function GET() {
       );
     }
 
-    // Check if user is admin
-    const user = await prisma.user.findUnique({
-      where: { id: session.user.id },
-      select: { role: true },
-    });
+    // Fetch admin check and orders in parallel
+    const [user, orders] = await Promise.all([
+      prisma.user.findUnique({
+        where: { id: session.user.id },
+        select: { role: true },
+      }),
+      prisma.purchaseHistory.findMany({
+        select: {
+          id: true,
+          userId: true,
+          productId: true,
+          productName: true,
+          price: true,
+          reference: true,
+          status: true,
+          createdAt: true,
+        },
+        orderBy: {
+          createdAt: "desc",
+        },
+        take: 100, // Limit to recent 100 orders
+      }),
+    ]);
 
-    if (user?.role !== "admin") {
+    // Check admin role after parallel fetch
+    if (!user || user.role !== "admin") {
       return NextResponse.json(
         { error: "Forbidden - Admin only" },
         { status: 403 }
       );
     }
-
-    // Fetch all purchase history
-    const orders = await prisma.purchaseHistory.findMany({
-      orderBy: {
-        createdAt: "desc",
-      },
-    });
 
     // Get unique user IDs
     const userIds = [...new Set(orders.map(o => o.userId))];

@@ -16,27 +16,18 @@ export async function GET() {
       );
     }
 
-    // Check if user is admin
-    const user = await prisma.user.findUnique({
-      where: { id: session.user.id },
-      select: { role: true },
-    });
-
-    if (user?.role !== "admin") {
-      return NextResponse.json(
-        { error: "Forbidden - Admin only" },
-        { status: 403 }
-      );
-    }
-
-    // Get today's date range
+    // Get today's date range - compute early
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
 
-    // Fetch statistics in parallel from GameItemOrder
-    const [totalUsers, totalSales, todayOrders, totalOrders] = await Promise.all([
+    // Fetch all data in parallel including admin check
+    const [user, totalUsers, totalSales, todayOrders, totalOrders] = await Promise.all([
+      prisma.user.findUnique({
+        where: { id: session.user.id },
+        select: { role: true },
+      }),
       // จำนวนผู้ใช้ทั้งหมด
       prisma.user.count(),
       
@@ -61,6 +52,14 @@ export async function GET() {
       // จำนวนการขายทั้งหมดในระบบ
       prisma.gameItemOrder.count(),
     ]);
+
+    // Check admin role after parallel fetch
+    if (!user || user.role !== "admin") {
+      return NextResponse.json(
+        { error: "Forbidden - Admin only" },
+        { status: 403 }
+      );
+    }
 
     return NextResponse.json({
       totalUsers,

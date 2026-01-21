@@ -17,22 +17,39 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Get user with role from database
-    const user = await prisma.user.findUnique({
-      where: { id: session.user.id },
-      select: { role: true },
-    });
+    // Fetch all data in parallel including admin check
+    const [user, gameItems] = await Promise.all([
+      prisma.user.findUnique({
+        where: { id: session.user.id },
+        select: { role: true },
+      }),
+      prisma.gameItem.findMany({
+        select: {
+          id: true,
+          name: true,
+          description: true,
+          image: true,
+          price: true,
+          isCustomPrice: true,
+          stock: true,
+          isUnlimitedStock: true,
+          isAuction: true,
+          auctionEndDate: true,
+          isActive: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+        orderBy: { createdAt: "desc" },
+      }),
+    ]);
 
+    // Check admin role after parallel fetch
     if (!user || user.role !== "admin") {
       return NextResponse.json(
         { error: "Forbidden - Admin only" },
         { status: 403 }
       );
     }
-
-    const gameItems = await prisma.gameItem.findMany({
-      orderBy: { createdAt: "desc" },
-    });
 
     return NextResponse.json({
       success: true,

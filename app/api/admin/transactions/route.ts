@@ -16,34 +16,30 @@ export async function GET(request: Request) {
       );
     }
 
-    // Check if user is admin
-    const user = await prisma.user.findUnique({
-      where: { id: session.user.id },
-      select: { role: true },
-    });
-
-    if (user?.role !== "admin") {
-      return NextResponse.json(
-        { error: "Forbidden - Admin only" },
-        { status: 403 }
-      );
-    }
-
-    // Get query parameters for pagination
+    // Get query parameters for pagination - parse early
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get("page") || "1");
     const limit = parseInt(searchParams.get("limit") || "20");
     const skip = (page - 1) * limit;
 
-    // Fetch transactions with user information
-    const [transactions, totalCount] = await Promise.all([
+    // Fetch all data in parallel including admin check
+    const [user, transactions, totalCount, totalAmount] = await Promise.all([
+      prisma.user.findUnique({
+        where: { id: session.user.id },
+        select: { role: true },
+      }),
       prisma.verifiedSlip.findMany({
         skip,
         take: limit,
         orderBy: {
           verifiedAt: "desc",
         },
-        include: {
+        select: {
+          id: true,
+          transRef: true,
+          amount: true,
+          userId: true,
+          verifiedAt: true,
           user: {
             select: {
               id: true,
@@ -54,14 +50,20 @@ export async function GET(request: Request) {
         },
       }),
       prisma.verifiedSlip.count(),
+      prisma.verifiedSlip.aggregate({
+        _sum: {
+          amount: true,
+        },
+      }),
     ]);
 
-    // Get total amount
-    const totalAmount = await prisma.verifiedSlip.aggregate({
-      _sum: {
-        amount: true,
-      },
-    });
+    // Check admin role after parallel fetch
+    if (!user || user.role !== "admin") {
+      return NextResponse.json(
+        { error: "Forbidden - Admin only" },
+        { status: 403 }
+      );
+    }
 
     return NextResponse.json({
       transactions: transactions.map((t) => ({

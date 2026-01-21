@@ -8,6 +8,7 @@ import BottomNav from "./components/BottomNav";
 import ThemeBackground from "./components/ThemeBackground";
 import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -81,14 +82,29 @@ export const metadata: Metadata = {
   },
 };
 
+async function getLogoUrl() {
+  try {
+    const settings = await prisma.websiteSettings.findFirst({
+      select: { logoUrl: true },
+    });
+    return settings?.logoUrl || null;
+  } catch (error) {
+    console.error("Error fetching logo:", error);
+    return null;
+  }
+}
+
 export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
+  const [session, logoUrl] = await Promise.all([
+    auth.api.getSession({
+      headers: await headers(),
+    }),
+    getLogoUrl(),
+  ]);
 
   return (
     <html lang="en" className="dark">
@@ -99,7 +115,7 @@ export default async function RootLayout({
           <ThemeBackground />
           <div className="relative min-h-screen">
             <div className="relative pb-20 md:pb-0">
-              <Navigation session={session} />
+              <Navigation session={session} logoUrl={logoUrl} />
               {children}
             </div>
             <ContactButton />

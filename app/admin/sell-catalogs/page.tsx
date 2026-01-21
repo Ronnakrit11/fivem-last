@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, FolderOpen, Plus, Pencil, Trash2, Loader2, X, GripVertical } from "lucide-react";
+import { ArrowLeft, FolderOpen, Plus, Pencil, Trash2, Loader2, X, GripVertical, Upload, Image as ImageIcon } from "lucide-react";
 import Link from "next/link";
 
 interface Catalog {
@@ -10,6 +10,7 @@ interface Catalog {
   name: string;
   description: string;
   icon: string;
+  image: string | null;
   isActive: boolean;
   sortOrder: number;
   _count: {
@@ -30,8 +31,10 @@ export default function SellCatalogsPage() {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [icon, setIcon] = useState("");
+  const [image, setImage] = useState<string | null>(null);
   const [isActive, setIsActive] = useState(true);
   const [sortOrder, setSortOrder] = useState(0);
+  const [uploadingImage, setUploadingImage] = useState(false);
 
   const fetchCatalogs = async () => {
     try {
@@ -64,6 +67,7 @@ export default function SellCatalogsPage() {
     setName("");
     setDescription("");
     setIcon("");
+    setImage(null);
     setIsActive(true);
     setSortOrder(catalogs.length);
     setShowModal(true);
@@ -74,9 +78,38 @@ export default function SellCatalogsPage() {
     setName(catalog.name);
     setDescription(catalog.description);
     setIcon(catalog.icon);
+    setImage(catalog.image);
     setIsActive(catalog.isActive);
     setSortOrder(catalog.sortOrder);
     setShowModal(true);
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingImage(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await res.json();
+      if (data.success && data.url) {
+        setImage(data.url);
+      } else {
+        alert(data.error || "ไม่สามารถอัปโหลดรูปภาพได้");
+      }
+    } catch (error) {
+      console.error("Error uploading image:", error);
+      alert("เกิดข้อผิดพลาดในการอัปโหลดรูปภาพ");
+    } finally {
+      setUploadingImage(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -96,7 +129,7 @@ export default function SellCatalogsPage() {
       const res = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, description, icon, isActive, sortOrder }),
+        body: JSON.stringify({ name, description, icon, image, isActive, sortOrder }),
       });
 
       const data = await res.json();
@@ -190,8 +223,10 @@ export default function SellCatalogsPage() {
                     <div className="text-gray-400 cursor-move">
                       <GripVertical className="w-5 h-5" />
                     </div>
-                    <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
-                      {catalog.icon ? (
+                    <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center overflow-hidden">
+                      {catalog.image ? (
+                        <img src={catalog.image} alt={catalog.name} className="w-full h-full object-cover" />
+                      ) : catalog.icon ? (
                         <span className="text-xl">{catalog.icon}</span>
                       ) : (
                         <FolderOpen className="w-5 h-5 text-purple-600" />
@@ -304,6 +339,42 @@ export default function SellCatalogsPage() {
                     placeholder="🎮"
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
                   />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    รูปภาพหมวดหมู่
+                  </label>
+                  {image ? (
+                    <div className="relative">
+                      <img src={image} alt="Catalog" className="w-full h-32 object-cover rounded-lg border border-gray-200" />
+                      <button
+                        type="button"
+                        onClick={() => setImage(null)}
+                        className="absolute top-2 right-2 p-1 bg-red-500 rounded-full text-white hover:bg-red-600"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ) : (
+                    <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-purple-500 transition-colors">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleImageUpload}
+                        className="hidden"
+                        disabled={uploadingImage}
+                      />
+                      {uploadingImage ? (
+                        <Loader2 className="w-8 h-8 text-purple-500 animate-spin" />
+                      ) : (
+                        <>
+                          <Upload className="w-8 h-8 text-gray-400 mb-2" />
+                          <p className="text-sm text-gray-500">คลิกเพื่ออัปโหลดรูปภาพ</p>
+                        </>
+                      )}
+                    </label>
+                  )}
                 </div>
 
                 <div className="flex items-center gap-4">

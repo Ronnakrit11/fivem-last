@@ -22,6 +22,18 @@ model User {
   image         String?
   balance       Float          @default(0)
   role          String         @default("user")
+  acceptedPolicy Boolean       @default(false)
+  acceptedPolicyAt DateTime?
+  
+  // User profile details
+  fullName      String         @default("")
+  phone         String         @default("")
+  bankName      String         @default("")
+  bankAccountReceive String    @default("")
+  bankAccountTransfer String   @default("")
+  otherBankName String         @default("")
+  profileCompleted Boolean     @default(false)
+  
   createdAt     DateTime
   updatedAt     DateTime
   sessions      Session[]
@@ -409,10 +421,15 @@ model GameItemOrder {
   buyerName       String   @default("")
   buyerPhone      String   @default("")
   buyerBankAccount String  @default("")
+  selectedPaymentMethod String @default("")
   slipImage       String?
+  acceptedPurchasePolicy Boolean @default(false)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
+  @@index([createdAt(sort: Desc)])
+  @@index([status])
+  @@index([userId])
   @@map("game_item_order")
 }
 
@@ -462,6 +479,7 @@ model SellCatalog {
   name        String
   description String   @default("") @db.Text
   icon        String   @default("")
+  image       String?
   isActive    Boolean  @default(true)
   sortOrder   Int      @default(0)
   createdAt   DateTime @default(now())
@@ -482,10 +500,63 @@ model UserSellItem {
   description String   @db.Text
   price       Float
   image       String?
+  bankName    String   @default("")
+  bankAccount String   @default("")
   status      String   @default("PENDING") // PENDING, APPROVED, REJECTED
   adminNote   String?
+  acceptedSellPolicy Boolean @default(false)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  @@index([createdAt(sort: Desc)])
+  @@index([status])
+  @@index([userId])
   @@map("user_sell_item")
+}
+
+model ContactButton {
+  id          String   @id @default(cuid())
+  name        String   @default("ติดต่อเรา")
+  link        String   @default("")
+  icon        String?
+  qrCodeUrl   String?
+  isActive    Boolean  @default(true)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("contact_button")
+}
+
+model Policy {
+  id          String   @id @default(cuid())
+  title       String   @default("นโยบายความเป็นส่วนตัว")
+  content     String   @db.Text
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("policy")
+}
+
+model PurchasePolicy {
+  id          String   @id @default(cuid())
+  title       String   @default("นโยบายการซื้อสินค้า")
+  content     String   @db.Text
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("purchase_policy")
+}
+
+model SellPolicy {
+  id          String   @id @default(cuid())
+  title       String   @default("นโยบายการขายสินค้า")
+  content     String   @db.Text
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("sell_policy")
 }

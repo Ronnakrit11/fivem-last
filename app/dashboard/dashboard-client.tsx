@@ -6,7 +6,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Wallet, ArrowUpCircle, Crown, ShoppingBag, User, Mail, LogOut, Gavel } from "lucide-react";
 import { useBalance } from "@/app/contexts/BalanceContext";
 import { toast } from "sonner";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import ProfileModal from "@/app/components/ProfileModal";
 
 type Session = typeof auth.$Infer.Session;
 
@@ -19,6 +20,7 @@ export default function DashboardClientPage({
   const searchParams = useSearchParams();
   const { balance, refreshBalance } = useBalance();
   const user = session.user;
+  const [showProfileModal, setShowProfileModal] = useState(false);
 
   // Check for successful login from OAuth
   useEffect(() => {
@@ -33,9 +35,42 @@ export default function DashboardClientPage({
       // Remove the query parameter from URL
       const newUrl = window.location.pathname;
       window.history.replaceState({}, '', newUrl);
+      
+      // Accept policy for OAuth login (user already accepted before clicking Google button)
+      acceptPolicyForOAuth();
+      
+      // Check if profile is completed
+      checkProfileCompletion();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
+
+  const acceptPolicyForOAuth = async () => {
+    try {
+      await fetch("/api/user/accept-policy", {
+        method: "POST",
+      });
+    } catch (error) {
+      console.error("Error accepting policy:", error);
+    }
+  };
+
+  // Check profile completion on mount
+  useEffect(() => {
+    checkProfileCompletion();
+  }, []);
+
+  const checkProfileCompletion = async () => {
+    try {
+      const res = await fetch("/api/user/profile");
+      const data = await res.json();
+      if (data.success && data.user && !data.user.profileCompleted) {
+        setShowProfileModal(true);
+      }
+    } catch (error) {
+      console.error("Error checking profile:", error);
+    }
+  };
 
   const handleSignOut = async () => {
     // Clear balance from sessionStorage
@@ -175,6 +210,13 @@ export default function DashboardClientPage({
           </div>
         </div>
       </div>
+
+      {/* Profile Modal */}
+      <ProfileModal
+        isOpen={showProfileModal}
+        onClose={() => setShowProfileModal(false)}
+        onComplete={() => setShowProfileModal(false)}
+      />
     </div>
   );
 }

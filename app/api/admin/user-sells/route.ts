@@ -16,41 +16,74 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const user = await prisma.user.findUnique({
-      where: { id: session.user.id },
-      select: { role: true },
-    });
+    // Pagination params - parse early
+    const { searchParams } = new URL(request.url);
+    const page = parseInt(searchParams.get("page") || "1");
+    const limit = parseInt(searchParams.get("limit") || "20");
+    const skip = (page - 1) * limit;
 
-    if (user?.role !== "admin") {
+    // Start all queries in parallel including admin check
+    const [user, total, sellItems] = await Promise.all([
+      prisma.user.findUnique({
+        where: { id: session.user.id },
+        select: { role: true },
+      }),
+      prisma.userSellItem.count(),
+      prisma.userSellItem.findMany({
+        select: {
+          id: true,
+          userId: true,
+          catalogId: true,
+          name: true,
+          description: true,
+          price: true,
+          image: true,
+          bankName: true,
+          bankAccount: true,
+          status: true,
+          adminNote: true,
+          acceptedSellPolicy: true,
+          createdAt: true,
+          user: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+            },
+          },
+          catalog: {
+            select: {
+              id: true,
+              name: true,
+              icon: true,
+            },
+          },
+        },
+        orderBy: { createdAt: "desc" },
+        skip,
+        take: limit,
+      }),
+    ]);
+
+    // Check admin role after parallel fetch
+    if (!user || user.role !== "admin") {
       return NextResponse.json(
         { error: "Forbidden - Admin only" },
         { status: 403 }
       );
     }
 
-    const sellItems = await prisma.userSellItem.findMany({
-      include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-        catalog: {
-          select: {
-            id: true,
-            name: true,
-            icon: true,
-          },
-        },
-      },
-      orderBy: { createdAt: "desc" },
-    });
+    const totalPages = Math.ceil(total / limit);
 
     return NextResponse.json({
       success: true,
       sellItems,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages,
+      },
     });
   } catch (error) {
     console.error("Error fetching sell items:", error);

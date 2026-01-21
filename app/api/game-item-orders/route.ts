@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { gameItemId, amount, buyerName, buyerPhone, buyerBankAccount, slipImage } = body;
+    const { gameItemId, amount, buyerName, buyerPhone, buyerBankAccount, slipImage, acceptedPurchasePolicy, selectedPaymentMethod } = body;
 
     if (!gameItemId) {
       return NextResponse.json(
@@ -85,7 +85,9 @@ export async function POST(request: NextRequest) {
           buyerName: buyerName || "",
           buyerPhone: buyerPhone || "",
           buyerBankAccount: buyerBankAccount || "",
+          selectedPaymentMethod: selectedPaymentMethod || "",
           slipImage: slipImage || null,
+          acceptedPurchasePolicy: acceptedPurchasePolicy || false,
           status: "PENDING",
         },
         include: {

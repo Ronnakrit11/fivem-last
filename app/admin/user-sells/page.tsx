@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, ShoppingBag, User, CheckCircle, XCircle, Clock, Loader2, X, FolderOpen } from "lucide-react";
+import { ArrowLeft, ShoppingBag, User, CheckCircle, XCircle, Clock, Loader2, X, FolderOpen, FileSpreadsheet, Shield } from "lucide-react";
+import * as XLSX from "xlsx";
 import Link from "next/link";
 
 interface SellItem {
@@ -22,8 +23,11 @@ interface SellItem {
   description: string;
   price: number;
   image: string | null;
+  bankName: string;
+  bankAccount: string;
   status: string;
   adminNote: string | null;
+  acceptedSellPolicy: boolean;
   createdAt: Date;
 }
 
@@ -81,7 +85,8 @@ export default function UserSellsPage() {
 
   useEffect(() => {
     fetchSellItems();
-  }, [router]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Filter items by selected catalog
   const filteredItems = sellItems.filter(item => {
@@ -171,6 +176,56 @@ export default function UserSellsPage() {
     setShowDetailModal(true);
   };
 
+  const getStatusText = (status: string) => {
+    switch (status) {
+      case "APPROVED": return "อนุมัติแล้ว";
+      case "PENDING": return "รอตรวจสอบ";
+      case "REJECTED": return "ปฏิเสธ";
+      default: return status;
+    }
+  };
+
+  const exportToExcel = () => {
+    const dataToExport = filteredItems.map((item, index) => ({
+      "ลำดับ": index + 1,
+      "รหัสสินค้า": item.id,
+      "ชื่อสินค้า": item.name,
+      "รายละเอียด": item.description || "-",
+      "ราคา (บาท)": item.price || 0,
+      "หมวดหมู่": item.catalog?.name || "ไม่มีหมวดหมู่",
+      "ชื่อผู้ขาย": item.user?.name || "-",
+      "อีเมลผู้ขาย": item.user?.email || "-",
+      "สถานะ": getStatusText(item.status),
+      "หมายเหตุ Admin": item.adminNote || "-",
+      "วันที่ส่ง": formatDate(item.createdAt),
+      "มีรูปภาพ": item.image ? "มี" : "ไม่มี",
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(dataToExport);
+    
+    // Set column widths
+    ws["!cols"] = [
+      { wch: 6 },   // ลำดับ
+      { wch: 30 },  // รหัสสินค้า
+      { wch: 25 },  // ชื่อสินค้า
+      { wch: 40 },  // รายละเอียด
+      { wch: 12 },  // ราคา
+      { wch: 15 },  // หมวดหมู่
+      { wch: 20 },  // ชื่อผู้ขาย
+      { wch: 25 },  // อีเมล
+      { wch: 12 },  // สถานะ
+      { wch: 20 },  // หมายเหตุ
+      { wch: 20 },  // วันที่
+      { wch: 10 },  // มีรูปภาพ
+    ];
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "รายการขาย");
+    
+    const fileName = `user-sells_${new Date().toISOString().split("T")[0]}.xlsx`;
+    XLSX.writeFile(wb, fileName);
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 py-12">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -197,13 +252,23 @@ export default function UserSellsPage() {
                 </p>
               </div>
             </div>
-            <Link
-              href="/admin/sell-catalogs"
-              className="px-4 py-2 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 flex items-center gap-2"
-            >
-              <FolderOpen className="w-5 h-5" />
-              จัดการหมวดหมู่
-            </Link>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={exportToExcel}
+                disabled={loading || filteredItems.length === 0}
+                className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-md"
+              >
+                <FileSpreadsheet className="w-5 h-5" />
+                Export Excel
+              </button>
+              <Link
+                href="/admin/sell-catalogs"
+                className="px-4 py-2 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 flex items-center gap-2"
+              >
+                <FolderOpen className="w-5 h-5" />
+                จัดการหมวดหมู่
+              </Link>
+            </div>
           </div>
         </div>
 
@@ -324,6 +389,11 @@ export default function UserSellsPage() {
                           <span className="font-medium">{item.user?.name || "-"}</span>
                           <span className="ml-2 text-gray-400">• {item.user?.email}</span>
                         </p>
+                        {item.bankName && item.bankAccount && (
+                          <p className="text-xs text-blue-600 mt-1">
+                            🏦 {item.bankName} • {item.bankAccount}
+                          </p>
+                        )}
                         <p className="text-xs text-gray-400 mt-1">{formatDate(item.createdAt)}</p>
                       </div>
                     </div>
@@ -418,6 +488,38 @@ export default function UserSellsPage() {
                 <div className="p-3 bg-gray-50 rounded-lg">
                   <p className="font-medium text-gray-900">{selectedItem.user?.name || "-"}</p>
                   <p className="text-sm text-gray-500">{selectedItem.user?.email || "-"}</p>
+                </div>
+              </div>
+
+              {/* Bank Info */}
+              <div className="space-y-3 mb-6">
+                <h4 className="font-semibold text-gray-700">ข้อมูลบัญชีรับเงิน</h4>
+                <div className="p-3 bg-blue-50 rounded-lg border border-blue-100">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-xs text-gray-500 mb-1">ธนาคาร</p>
+                      <p className="font-medium text-gray-900">{selectedItem.bankName || "-"}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500 mb-1">เลขบัญชี</p>
+                      <p className="font-medium text-gray-900">{selectedItem.bankAccount || "-"}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Policy Acceptance */}
+              <div className="mb-6">
+                <h4 className="font-semibold text-gray-700 mb-2">นโยบายการขาย</h4>
+                <div className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg ${
+                  selectedItem.acceptedSellPolicy 
+                    ? "bg-orange-100 text-orange-800" 
+                    : "bg-gray-100 text-gray-600"
+                }`}>
+                  <Shield className="w-4 h-4" />
+                  <span className="text-sm font-medium">
+                    {selectedItem.acceptedSellPolicy ? "ยอมรับนโยบายแล้ว" : "ยังไม่ได้ยอมรับนโยบาย"}
+                  </span>
                 </div>
               </div>
 

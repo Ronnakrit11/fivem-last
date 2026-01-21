@@ -12,14 +12,19 @@ import { useTheme } from "@/app/contexts/ThemeContext";
 
 type Session = typeof auth.$Infer.Session;
 
-export default function Navigation({ session }: { session: Session | null }) {
+interface NavigationProps {
+  session: Session | null;
+  logoUrl?: string | null;
+}
+
+export default function Navigation({ session, logoUrl: initialLogoUrl }: NavigationProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const { balance } = useBalance();
   const { colors } = useTheme();
   const [userRole, setUserRole] = useState<string>("user");
-  const [logoUrl, setLogoUrl] = useState<string>("/logonew.webp");
+  const [logoUrl, setLogoUrl] = useState<string | null>(initialLogoUrl || null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const isActive = (path: string) => {
@@ -47,8 +52,10 @@ export default function Navigation({ session }: { session: Session | null }) {
     };
   }, [session]);
 
-  // Fetch logo from database
+  // Fetch logo from database if not provided via props
   useEffect(() => {
+    if (initialLogoUrl) return; // Skip if already provided from server
+    
     fetch("/api/website-assets")
       .then(res => res.json())
       .then((data) => {
@@ -57,7 +64,7 @@ export default function Navigation({ session }: { session: Session | null }) {
         }
       })
       .catch((error) => console.error("Error fetching logo:", error));
-  }, []);
+  }, [initialLogoUrl]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -91,16 +98,22 @@ export default function Navigation({ session }: { session: Session | null }) {
           <div className="flex justify-between items-center h-14 px-3 sm:px-4">
           <Link href="/" className="flex items-center space-x-2 group">
             <div className="relative">
-              <Image
-                src={logoUrl}
-                alt="Logo"
-                width={120}
-                height={120}
-                className="w-auto h-12 object-contain transition-transform group-hover:scale-110"
-                priority
-                quality={100}
-                unoptimized
-              />
+              {logoUrl ? (
+                <Image
+                  src={logoUrl}
+                  alt="Logo"
+                  width={120}
+                  height={120}
+                  className="w-auto h-12 object-contain transition-transform group-hover:scale-110"
+                  priority
+                  quality={100}
+                  unoptimized
+                />
+              ) : (
+                <div className="w-12 h-12 bg-slate-700/50 rounded-lg flex items-center justify-center">
+                  <span className="text-white font-bold text-lg">IG</span>
+                </div>
+              )}
             </div>
             <span className="text-lg font-bold text-white hidden sm:inline">
               

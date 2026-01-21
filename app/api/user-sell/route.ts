@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { name, description, price, image, catalogId } = body;
+    const { name, description, price, image, catalogId, acceptedSellPolicy, bankName, bankAccount } = body;
 
     if (!name || !description || !price) {
       return NextResponse.json(
@@ -41,6 +41,9 @@ export async function POST(request: NextRequest) {
         price: parseFloat(price),
         image: image || null,
         catalogId: catalogId || null,
+        bankName: bankName || "",
+        bankAccount: bankAccount || "",
+        acceptedSellPolicy: acceptedSellPolicy || false,
         status: "PENDING",
       },
     });

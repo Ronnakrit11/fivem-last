@@ -1,21 +1,30 @@
-"use client";
-
-import { useState, useEffect } from "react";
 import Image from "next/image";
+import { prisma } from "@/lib/prisma";
 
-export default function DynamicBanner() {
-  const [bannerUrl, setBannerUrl] = useState<string>("/banner.webp");
+async function getBannerUrl() {
+  try {
+    const settings = await prisma.websiteSettings.findFirst({
+      select: { bannerUrl: true },
+    });
+    return settings?.bannerUrl || null;
+  } catch (error) {
+    console.error("Error fetching banner:", error);
+    return null;
+  }
+}
 
-  useEffect(() => {
-    fetch("/api/website-assets")
-      .then(res => res.json())
-      .then((data) => {
-        if (data.bannerUrl) {
-          setBannerUrl(data.bannerUrl);
-        }
-      })
-      .catch((error) => console.error("Error fetching banner:", error));
-  }, []);
+export default async function DynamicBanner() {
+  const bannerUrl = await getBannerUrl();
+
+  if (!bannerUrl) {
+    return (
+      <section className="w-full">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
+          <div className="relative w-full rounded-3xl overflow-hidden glass-panel aspect-[1920/560] bg-slate-800/50" />
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="w-full">

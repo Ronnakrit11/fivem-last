@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Settings, Users, Activity, FileText, Gamepad2, Building2 } from "lucide-react";
+import { Settings, Users, Activity, FileText, Gamepad2, Building2, MessageCircle, Shield } from "lucide-react";
 
 export default function AdminPage() {
   const router = useRouter();
@@ -270,6 +270,40 @@ export default function AdminPage() {
             </div>
             <p className="text-sm text-gray-600">
               จัดการบัญชีธนาคารสำหรับรับชำระเงิน
+            </p>
+          </Link>
+
+          <Link
+            href="/admin/contact-buttons"
+            className="bg-white rounded-xl shadow-md p-6 border border-gray-200 hover:shadow-lg transition-shadow cursor-pointer group"
+          >
+            <div className="flex items-center mb-4">
+              <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center mr-4">
+                <MessageCircle className="w-6 h-6 text-purple-600" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900 group-hover:text-purple-600 transition-colors">
+                จัดการปุ่มติดต่อ
+              </h3>
+            </div>
+            <p className="text-sm text-gray-600">
+              ตั้งค่าปุ่มติดต่อ ลิงก์ รูปภาพ และ QR Code
+            </p>
+          </Link>
+
+          <Link
+            href="/admin/policy"
+            className="bg-white rounded-xl shadow-md p-6 border border-gray-200 hover:shadow-lg transition-shadow cursor-pointer group"
+          >
+            <div className="flex items-center mb-4">
+              <div className="w-12 h-12 bg-indigo-100 rounded-lg flex items-center justify-center mr-4">
+                <Shield className="w-6 h-6 text-indigo-600" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900 group-hover:text-indigo-600 transition-colors">
+                จัดการนโยบาย
+              </h3>
+            </div>
+            <p className="text-sm text-gray-600">
+              ตั้งค่านโยบายที่แสดงตอนสมัครสมาชิก
             </p>
           </Link>
         </div>

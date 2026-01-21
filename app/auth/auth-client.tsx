@@ -1,11 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { signIn, signInSocial, signUp } from "@/lib/actions/auth-actions";
 import { Turnstile } from "@marsidev/react-turnstile";
 import { toast } from "sonner";
 import { useBalance } from "@/app/contexts/BalanceContext";
+import { X, Shield } from "lucide-react";
+
+interface Policy {
+  id: string;
+  title: string;
+  content: string;
+}
 
 export default function AuthClientPage() {
   const router = useRouter();
@@ -17,10 +24,30 @@ export default function AuthClientPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [turnstileToken, setTurnstileToken] = useState<string>("");
+  const [policy, setPolicy] = useState<Policy | null>(null);
+  const [showPolicyModal, setShowPolicyModal] = useState(false);
+  const [acceptedPolicy, setAcceptedPolicy] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/policy")
+      .then(res => res.json())
+      .then(data => {
+        if (data.policy) {
+          setPolicy(data.policy);
+        }
+      })
+      .catch(err => console.error("Error fetching policy:", err));
+  }, []);
 
   // Get callback URL from search params (set by middleware)
 
   const handleSocialAuth = async (provider: "google" | "github") => {
+    // Check if policy is accepted
+    if (policy && !acceptedPolicy) {
+      setError("กรุณายอมรับนโยบายการสมัครสมาชิกก่อนเข้าสู่ระบบ");
+      return;
+    }
+
     setIsLoading(true);
     setError("");
 
@@ -181,7 +208,7 @@ export default function AuthClientPage() {
           <div className="space-y-3">
             <button
               onClick={() => handleSocialAuth("google")}
-              disabled={isLoading}
+              disabled={isLoading || (!!policy && !acceptedPolicy)}
               className="w-full flex items-center justify-center px-4 py-3 rounded-xl shadow-sm text-gray-200 bg-white/10 hover:bg-white/15 border border-white/10 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:ring-offset-0 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               <svg className="w-5 h-5 mr-3" viewBox="0 0 24 24">
@@ -204,6 +231,29 @@ export default function AuthClientPage() {
               </svg>
               เข้าสู่ระบบด้วย Google
             </button>
+
+            {/* Policy Acceptance for Google Login */}
+            {policy && (
+              <div className="flex items-start gap-3 p-3 bg-white/5 rounded-xl border border-white/10">
+                <input
+                  type="checkbox"
+                  id="acceptPolicyGoogle"
+                  checked={acceptedPolicy}
+                  onChange={(e) => setAcceptedPolicy(e.target.checked)}
+                  className="mt-1 w-4 h-4 text-indigo-600 rounded focus:ring-indigo-500 bg-white/10 border-white/20"
+                />
+                <label htmlFor="acceptPolicyGoogle" className="text-sm text-gray-300">
+                  ข้าพเจ้ายอมรับ{" "}
+                  <button
+                    type="button"
+                    onClick={() => setShowPolicyModal(true)}
+                    className="text-indigo-400 hover:text-indigo-300 underline"
+                  >
+                    {policy.title}
+                  </button>
+                </label>
+              </div>
+            )}
           </div>
 
           <div className="relative">
@@ -301,7 +351,7 @@ export default function AuthClientPage() {
 
             <button
               type="submit"
-              disabled={isLoading || (!isSignIn && !turnstileToken)}
+              disabled={isLoading || (!isSignIn && !turnstileToken) || (!isSignIn && !!policy && !acceptedPolicy)}
               className="w-full flex justify-center py-3 px-4 rounded-xl shadow-sm text-sm font-medium text-gray-100 bg-white/10 hover:bg-white/15 border border-white/10 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:ring-offset-0 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isLoading ? (
@@ -357,6 +407,57 @@ export default function AuthClientPage() {
           </div>
         </div>
       </div>
+
+      {/* Policy Modal */}
+      {showPolicyModal && policy && (
+        <div 
+          className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4"
+          onClick={() => setShowPolicyModal(false)}
+        >
+          <div 
+            className="bg-slate-900 rounded-2xl max-w-2xl w-full max-h-[80vh] overflow-hidden shadow-2xl border border-white/10"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-6 border-b border-white/10 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Shield className="w-6 h-6 text-indigo-400" />
+                <h3 className="text-xl font-bold text-gray-100">{policy.title}</h3>
+              </div>
+              <button
+                onClick={() => setShowPolicyModal(false)}
+                className="text-gray-400 hover:text-gray-200 transition-colors"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+            
+            <div className="p-6 overflow-y-auto max-h-[60vh]">
+              <div 
+                className="prose prose-invert prose-sm max-w-none text-gray-300"
+                dangerouslySetInnerHTML={{ __html: policy.content }}
+              />
+            </div>
+
+            <div className="p-6 border-t border-white/10 flex gap-3">
+              <button
+                onClick={() => setShowPolicyModal(false)}
+                className="flex-1 px-4 py-3 bg-white/10 text-gray-200 rounded-xl font-medium hover:bg-white/15 transition-colors"
+              >
+                ปิด
+              </button>
+              <button
+                onClick={() => {
+                  setAcceptedPolicy(true);
+                  setShowPolicyModal(false);
+                }}
+                className="flex-1 px-4 py-3 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700 transition-colors"
+              >
+                ยอมรับนโยบาย
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

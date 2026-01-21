@@ -12,6 +12,7 @@ export async function GET() {
         name: true,
         description: true,
         icon: true,
+        image: true,
       },
     });
 
