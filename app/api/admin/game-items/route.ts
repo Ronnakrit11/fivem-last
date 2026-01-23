@@ -5,7 +5,7 @@ import { auth } from "@/lib/auth";
 // GET - Get all game items
 export async function GET(request: NextRequest) {
   try {
-    // Check authentication and admin role
+    // Check authentication and admin roles
     const session = await auth.api.getSession({
       headers: request.headers,
     });
