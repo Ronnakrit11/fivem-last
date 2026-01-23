@@ -216,6 +216,31 @@ export default function SellItemForm() {
             <p className="text-gray-400">ยังไม่มีหมวดหมู่สินค้า</p>
           </div>
         )}
+
+        {/* Alternative: Direct Sell Form without catalog */}
+        <div className="mt-8 pt-6 border-t border-white/10">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h4 className="text-lg font-semibold text-white">หรือขายสินค้าโดยไม่เลือกหมวดหมู่</h4>
+              <p className="text-sm text-slate-400">ไม่พบหมวดหมู่ที่ต้องการ? กรอกข้อมูลด้านล่างได้เลย</p>
+            </div>
+            <button
+              onClick={() => {
+                setSelectedCatalog(null);
+                setCatalogId("");
+                setBankName("");
+                setBankAccount("");
+                setAcceptedSellPolicy(false);
+                fetchSellPolicy();
+                setShowForm(true);
+              }}
+              className="px-4 py-2 bg-gradient-to-r from-orange-500 to-amber-600 text-white text-sm rounded-lg font-medium hover:from-orange-600 hover:to-amber-700 transition-all flex items-center gap-2"
+            >
+              <Package className="w-4 h-4" />
+              ขายสินค้าอื่นๆ
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* Sell Modal */}
