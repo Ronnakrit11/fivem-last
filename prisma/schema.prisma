@@ -32,6 +32,8 @@ model User {
   bankAccountReceive String    @default("")
   bankAccountTransfer String   @default("")
   otherBankName String         @default("")
+  bankNameTransfer String      @default("")
+  otherBankNameTransfer String @default("")
   profileCompleted Boolean     @default(false)
   
   createdAt     DateTime

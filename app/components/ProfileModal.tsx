@@ -36,6 +36,8 @@ export default function ProfileModal({ isOpen, onClose, onComplete }: ProfileMod
   const [bankAccountReceive, setBankAccountReceive] = useState("");
   const [bankAccountTransfer, setBankAccountTransfer] = useState("");
   const [otherBankName, setOtherBankName] = useState("");
+  const [bankNameTransfer, setBankNameTransfer] = useState("");
+  const [otherBankNameTransfer, setOtherBankNameTransfer] = useState("");
 
   useEffect(() => {
     if (isOpen) {
@@ -56,6 +58,8 @@ export default function ProfileModal({ isOpen, onClose, onComplete }: ProfileMod
         setBankAccountReceive(data.user.bankAccountReceive || "");
         setBankAccountTransfer(data.user.bankAccountTransfer || "");
         setOtherBankName(data.user.otherBankName || "");
+        setBankNameTransfer(data.user.bankNameTransfer || "");
+        setOtherBankNameTransfer(data.user.otherBankNameTransfer || "");
       }
     } catch (error) {
       console.error("Error fetching profile:", error);
@@ -90,6 +94,8 @@ export default function ProfileModal({ isOpen, onClose, onComplete }: ProfileMod
           bankAccountReceive: bankAccountReceive.trim(),
           bankAccountTransfer: bankAccountTransfer.trim(),
           otherBankName: bankName === "อื่นๆ" ? otherBankName.trim() : "",
+          bankNameTransfer: bankNameTransfer === "อื่นๆ" ? "" : bankNameTransfer,
+          otherBankNameTransfer: bankNameTransfer === "อื่นๆ" ? otherBankNameTransfer.trim() : "",
         }),
       });
 
@@ -229,6 +235,40 @@ export default function ProfileModal({ isOpen, onClose, onComplete }: ProfileMod
                   className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
               </div>
+
+              {/* Bank Name Transfer */}
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">
+                  <Building2 className="w-4 h-4 inline mr-1" />
+                  ธนาคารโอนเงิน
+                </label>
+                <select
+                  value={bankNameTransfer}
+                  onChange={(e) => setBankNameTransfer(e.target.value)}
+                  className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                >
+                  <option value="" className="bg-slate-800">-- เลือกธนาคาร --</option>
+                  {BANK_OPTIONS.map((bank) => (
+                    <option key={bank} value={bank} className="bg-slate-800">{bank}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Other Bank Name Transfer */}
+              {bankNameTransfer === "อื่นๆ" && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
+                    ระบุชื่อธนาคารโอนเงิน
+                  </label>
+                  <input
+                    type="text"
+                    value={otherBankNameTransfer}
+                    onChange={(e) => setOtherBankNameTransfer(e.target.value)}
+                    placeholder="ชื่อธนาคาร"
+                    className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  />
+                </div>
+              )}
 
               {/* Bank Account Transfer */}
               <div>

@@ -28,6 +28,8 @@ export async function GET(request: NextRequest) {
         bankAccountReceive: true,
         bankAccountTransfer: true,
         otherBankName: true,
+        bankNameTransfer: true,
+        otherBankNameTransfer: true,
         profileCompleted: true,
       },
     });
@@ -67,7 +69,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { fullName, phone, bankName, bankAccountReceive, bankAccountTransfer, otherBankName } = body;
+    const { fullName, phone, bankName, bankAccountReceive, bankAccountTransfer, otherBankName, bankNameTransfer, otherBankNameTransfer } = body;
 
     // Validate required fields
     if (!fullName || !phone) {
@@ -86,6 +88,8 @@ export async function POST(request: NextRequest) {
         bankAccountReceive: bankAccountReceive?.trim() || "",
         bankAccountTransfer: bankAccountTransfer?.trim() || "",
         otherBankName: otherBankName?.trim() || "",
+        bankNameTransfer: bankNameTransfer?.trim() || "",
+        otherBankNameTransfer: otherBankNameTransfer?.trim() || "",
         profileCompleted: true,
       },
       select: {
@@ -98,6 +102,8 @@ export async function POST(request: NextRequest) {
         bankAccountReceive: true,
         bankAccountTransfer: true,
         otherBankName: true,
+        bankNameTransfer: true,
+        otherBankNameTransfer: true,
         profileCompleted: true,
       },
     });

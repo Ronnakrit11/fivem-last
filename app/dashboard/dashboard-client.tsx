@@ -3,7 +3,7 @@ import { signOut } from "@/lib/actions/auth-actions";
 import { auth } from "@/lib/auth";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Wallet, ArrowUpCircle, Crown, ShoppingBag, User, Mail, LogOut, Gavel } from "lucide-react";
+import { Wallet, ArrowUpCircle, Crown, ShoppingBag, User, Mail, LogOut, Gavel, Pencil } from "lucide-react";
 import { useBalance } from "@/app/contexts/BalanceContext";
 import { toast } from "sonner";
 import { useEffect, useState } from "react";
@@ -122,14 +122,23 @@ export default function DashboardClientPage({
             <div className="grid grid-cols-2 gap-3">
               {/* Name */}
               <div className="bg-white/5 rounded-xl p-4 border border-white/10">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-indigo-500/20 flex items-center justify-center flex-shrink-0">
-                    <User className="w-5 h-5 text-indigo-300" />
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-indigo-500/20 flex items-center justify-center flex-shrink-0">
+                      <User className="w-5 h-5 text-indigo-300" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-400 mb-0.5">ชื่อผู้ใช้</p>
+                      <p className="text-sm font-semibold text-white">{user.name || "ไม่ระบุ"}</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-xs text-gray-400 mb-0.5">ชื่อผู้ใช้</p>
-                    <p className="text-sm font-semibold text-white">{user.name || "ไม่ระบุ"}</p>
-                  </div>
+                  <button
+                    onClick={() => setShowProfileModal(true)}
+                    className="px-3 py-1.5 rounded-lg bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 hover:text-indigo-200 transition-colors text-xs font-medium flex items-center gap-1.5"
+                  >
+                    <Pencil className="w-3 h-3" />
+                    แก้ไขข้อมูลส่วนตัว
+                  </button>
                 </div>
               </div>
 
