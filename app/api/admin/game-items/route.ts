@@ -42,9 +42,10 @@ export async function GET(request: NextRequest) {
         orderBy: { createdAt: "desc" },
       }),
     ]);
-
-
     
+
+
+
     // Check admin role after parallel fetch
     if (!user || user.role !== "admin") {
       return NextResponse.json(
