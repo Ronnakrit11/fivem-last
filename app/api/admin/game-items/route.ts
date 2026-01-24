@@ -43,6 +43,8 @@ export async function GET(request: NextRequest) {
       }),
     ]);
 
+
+    
     // Check admin role after parallel fetch
     if (!user || user.role !== "admin") {
       return NextResponse.json(
