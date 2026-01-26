@@ -42,11 +42,25 @@ export default function SellItemForm() {
   const openSellModal = (catalog: Catalog) => {
     setSelectedCatalog(catalog);
     setCatalogId(catalog.id);
-    setBankName("");
-    setBankAccount("");
     setAcceptedSellPolicy(false);
     fetchSellPolicy();
+    fetchUserProfile(); // Fetch user profile to pre-fill bank info
     setShowForm(true);
+  };
+
+  // Fetch user profile for pre-filling bank info
+  const fetchUserProfile = async () => {
+    try {
+      const res = await fetch("/api/user/profile");
+      const data = await res.json();
+      if (data.success && data.user) {
+        // Use bankAccountReceive for selling (account user receives money to)
+        setBankName(data.user.bankName || data.user.otherBankName || "");
+        setBankAccount(data.user.bankAccountReceive || "");
+      }
+    } catch (error) {
+      console.error("Error fetching user profile:", error);
+    }
   };
 
   const fetchSellPolicy = async () => {
@@ -228,10 +242,9 @@ export default function SellItemForm() {
               onClick={() => {
                 setSelectedCatalog(null);
                 setCatalogId("");
-                setBankName("");
-                setBankAccount("");
                 setAcceptedSellPolicy(false);
                 fetchSellPolicy();
+                fetchUserProfile(); // Fetch user profile to pre-fill bank info
                 setShowForm(true);
               }}
               className="px-4 py-2 bg-gradient-to-r from-orange-500 to-amber-600 text-white text-sm rounded-lg font-medium hover:from-orange-600 hover:to-amber-700 transition-all flex items-center gap-2"

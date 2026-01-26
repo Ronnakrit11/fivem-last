@@ -194,14 +194,28 @@ export default function HomeGameItems({ items }: { items: GameItem[] }) {
     setShowModal(false);
     fetchBankAccounts();
     fetchPurchasePolicy();
-    setBuyerName("");
-    setBuyerPhone("");
-    setBuyerBankAccount("");
+    fetchUserProfile(); // Fetch user profile to pre-fill form
     setSlipImage(null);
     setSelectedBankAccount(null);
     setAcceptedPurchasePolicy(false);
     setResult(null);
     setShowPaymentModal(true);
+  };
+
+  // Fetch user profile for pre-filling buyer info
+  const fetchUserProfile = async () => {
+    try {
+      const res = await fetch("/api/user/profile");
+      const data = await res.json();
+      if (data.success && data.user) {
+        setBuyerName(data.user.fullName || "");
+        setBuyerPhone(data.user.phone || "");
+        // Use bankAccountTransfer for payment (account user transfers from)
+        setBuyerBankAccount(data.user.bankAccountTransfer || "");
+      }
+    } catch (error) {
+      console.error("Error fetching user profile:", error);
+    }
   };
 
   const handleConfirmPayment = async () => {
