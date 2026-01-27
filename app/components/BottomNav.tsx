@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
-import { Home, Clock, Briefcase, User, LucideIcon } from "lucide-react";
+import { Home, Clock, Briefcase, User, LucideIcon, ShoppingBag, MessageCircle } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useTheme } from "@/app/contexts/ThemeContext";
 
@@ -62,14 +62,15 @@ export default function BottomNav() {
     {
       href: "/my-sells",
       label: "ประวัติขาย",
+      icon: ShoppingBag,
       isCenter: true,
-      useLogo: true,
+      useLogo: false,
       requireAuth: true,
     },
     {
       href: "http://facebook.com/",
       label: "ติดต่อ",
-      icon: Briefcase,
+      icon: MessageCircle,
       requireAuth: false,
       isExternal: true,
     },
