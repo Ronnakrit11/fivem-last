@@ -20,7 +20,7 @@ export async function PUT(
       select: { role: true },
     });
 
-    if (!user || user.role !== "admin") {
+    if (!user || (user.role !== "admin" && user.role !== "owner")) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -68,7 +68,7 @@ export async function DELETE(
       select: { role: true },
     });
 
-    if (!user || user.role !== "admin") {
+    if (!user || (user.role !== "admin" && user.role !== "owner")) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 

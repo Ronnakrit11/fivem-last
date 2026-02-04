@@ -58,7 +58,7 @@ export async function GET(request: Request) {
     ]);
 
     // Check admin role after parallel fetch
-    if (!user || user.role !== "admin") {
+    if (!user || (user.role !== "admin" && user.role !== "owner")) {
       return NextResponse.json(
         { error: "Forbidden - Admin only" },
         { status: 403 }

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Users, Search, CheckCircle, AlertCircle, Shield, ChevronLeft, ChevronRight, Eye, X, Phone, Building2, CreditCard, User } from "lucide-react";
+import { ArrowLeft, Users, Search, CheckCircle, AlertCircle, Shield, ChevronLeft, ChevronRight, Eye, X, Phone, Building2, CreditCard, User, Trash2, Pencil, Loader2 } from "lucide-react";
 import Link from "next/link";
 
 interface User {
@@ -47,6 +47,11 @@ export default function AdminUsersPage() {
   } | null>(null);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
+  const [userRole, setUserRole] = useState<string>("");
+  const [deleting, setDeleting] = useState<string | null>(null);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [editForm, setEditForm] = useState({ name: "", email: "", role: "", balance: "" });
 
   const fetchUsers = useCallback(() => {
     setLoading(true);
@@ -79,7 +84,79 @@ export default function AdminUsersPage() {
 
   useEffect(() => {
     fetchUsers();
+    // Fetch user role
+    fetch("/api/user/info")
+      .then(res => res.json())
+      .then(data => {
+        if (data.role) setUserRole(data.role);
+      })
+      .catch(() => {});
   }, [fetchUsers]);
+
+  const deleteUser = async (userId: string) => {
+    if (!confirm("คุณต้องการลบผู้ใช้นี้หรือไม่? การกระทำนี้ไม่สามารถย้อนกลับได้")) return;
+    
+    setDeleting(userId);
+    try {
+      const res = await fetch(`/api/admin/users?id=${userId}`, {
+        method: "DELETE",
+      });
+      const data = await res.json();
+      if (data.success) {
+        setUsers(users.filter(u => u.id !== userId));
+        showNotification("success", "ลบผู้ใช้สำเร็จ");
+      } else {
+        showNotification("error", data.error || "ไม่สามารถลบผู้ใช้ได้");
+      }
+    } catch (error) {
+      console.error("Error deleting user:", error);
+      showNotification("error", "เกิดข้อผิดพลาด");
+    } finally {
+      setDeleting(null);
+    }
+  };
+
+  const openEditModal = (user: User) => {
+    setEditingUser(user);
+    setEditForm({
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      balance: "0",
+    });
+    setShowEditModal(true);
+  };
+
+  const handleEditUser = async () => {
+    if (!editingUser) return;
+    
+    setUpdatingRole(editingUser.id);
+    try {
+      const res = await fetch("/api/admin/users", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: editingUser.id,
+          name: editForm.name,
+          email: editForm.email,
+          role: editForm.role,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setUsers(users.map(u => u.id === editingUser.id ? { ...u, ...data.user } : u));
+        showNotification("success", "แก้ไขข้อมูลผู้ใช้สำเร็จ");
+        setShowEditModal(false);
+      } else {
+        showNotification("error", data.error || "ไม่สามารถแก้ไขข้อมูลได้");
+      }
+    } catch (error) {
+      console.error("Error updating user:", error);
+      showNotification("error", "เกิดข้อผิดพลาด");
+    } finally {
+      setUpdatingRole(null);
+    }
+  };
 
   const showNotification = (type: "success" | "error", message: string) => {
     setNotification({ type, message });
@@ -356,6 +433,30 @@ export default function AdminUsersPage() {
                             )}
                             {user.role === "admin" ? "ลดเป็น User" : "เลื่อนเป็น Admin"}
                           </button>
+                          {/* Owner only buttons */}
+                          {userRole === "owner" && (
+                            <>
+                              <button
+                                onClick={() => openEditModal(user)}
+                                className="inline-flex items-center px-3 py-1 rounded-lg transition-colors text-sm bg-green-500 text-white hover:bg-green-600"
+                              >
+                                <Pencil className="w-4 h-4 mr-1" />
+                                แก้ไข
+                              </button>
+                              <button
+                                onClick={() => deleteUser(user.id)}
+                                disabled={deleting === user.id}
+                                className="inline-flex items-center px-3 py-1 rounded-lg transition-colors text-sm bg-red-600 text-white hover:bg-red-700 disabled:opacity-50"
+                              >
+                                {deleting === user.id ? (
+                                  <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+                                ) : (
+                                  <Trash2 className="w-4 h-4 mr-1" />
+                                )}
+                                ลบ
+                              </button>
+                            </>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -615,6 +716,77 @@ export default function AdminUsersPage() {
               >
                 ปิด
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit User Modal - Owner only */}
+      {showEditModal && editingUser && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full shadow-xl">
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-bold text-gray-900">แก้ไขข้อมูลผู้ใช้</h2>
+                <button
+                  onClick={() => setShowEditModal(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">ชื่อ</label>
+                  <input
+                    type="text"
+                    value={editForm.name}
+                    onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">อีเมล</label>
+                  <input
+                    type="email"
+                    value={editForm.email}
+                    onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
+                  <select
+                    value={editForm.role}
+                    onChange={(e) => setEditForm({ ...editForm, role: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="user">User</option>
+                    <option value="admin">Admin</option>
+                    <option value="owner">Owner</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex gap-3 mt-6">
+                <button
+                  onClick={() => setShowEditModal(false)}
+                  className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg font-medium hover:bg-gray-200"
+                >
+                  ยกเลิก
+                </button>
+                <button
+                  onClick={handleEditUser}
+                  disabled={updatingRole === editingUser.id}
+                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {updatingRole === editingUser.id && <Loader2 className="w-4 h-4 animate-spin" />}
+                  บันทึก
+                </button>
+              </div>
             </div>
           </div>
         </div>

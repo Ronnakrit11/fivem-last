@@ -23,7 +23,7 @@ export async function GET() {
       select: { role: true },
     });
 
-    if (user?.role !== "admin") {
+    if (user?.role !== "admin" && user?.role !== "owner") {
       return NextResponse.json(
         { error: "Forbidden - Admin only" },
         { status: 403 }
@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
       select: { role: true },
     });
 
-    if (user?.role !== "admin") {
+    if (user?.role !== "admin" && user?.role !== "owner") {
       return NextResponse.json(
         { error: "Forbidden - Admin only" },
         { status: 403 }

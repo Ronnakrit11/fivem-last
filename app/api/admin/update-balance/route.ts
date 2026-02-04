@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
       select: { role: true },
     });
 
-    if (adminUser?.role !== "admin") {
+    if (adminUser?.role !== "admin" && adminUser?.role !== "owner") {
       return NextResponse.json(
         { error: "Forbidden - Admin only" },
         { status: 403 }

@@ -175,7 +175,7 @@ export default function Navigation({ session, logoUrl: initialLogoUrl }: Navigat
 
                     {/* Menu Items */}
                     <div className="py-2 space-y-1">
-                      {userRole === "admin" ? (
+                      {(userRole === "admin" || userRole === "owner") ? (
                         <Link
                           href="/admin"
                           onClick={() => setIsDropdownOpen(false)}

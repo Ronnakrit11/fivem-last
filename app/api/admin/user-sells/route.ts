@@ -65,8 +65,8 @@ export async function GET(request: NextRequest) {
       }),
     ]);
 
-    // Check admin role after parallel fetch
-    if (!user || user.role !== "admin") {
+    // Check admin or owner role after parallel fetch
+    if (!user || ((user.role !== "admin" && user.role !== "owner"))) {
       return NextResponse.json(
         { error: "Forbidden - Admin only" },
         { status: 403 }
@@ -89,6 +89,60 @@ export async function GET(request: NextRequest) {
     console.error("Error fetching sell items:", error);
     return NextResponse.json(
       { error: "Failed to fetch sell items" },
+      { status: 500 }
+    );
+  }
+}
+
+// DELETE - Delete user sell item (owner only)
+export async function DELETE(request: NextRequest) {
+  try {
+    const session = await auth.api.getSession({
+      headers: request.headers,
+    });
+
+    if (!session?.user) {
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { role: true },
+    });
+
+    // Only owner can delete
+    if (!user || user.role !== "owner") {
+      return NextResponse.json(
+        { error: "Forbidden - Owner only" },
+        { status: 403 }
+      );
+    }
+
+    const { searchParams } = new URL(request.url);
+    const itemId = searchParams.get("id");
+
+    if (!itemId) {
+      return NextResponse.json(
+        { error: "Item ID is required" },
+        { status: 400 }
+      );
+    }
+
+    await prisma.userSellItem.delete({
+      where: { id: itemId },
+    });
+
+    return NextResponse.json({
+      success: true,
+      message: "Sell item deleted successfully",
+    });
+  } catch (error) {
+    console.error("Error deleting sell item:", error);
+    return NextResponse.json(
+      { error: "Failed to delete sell item" },
       { status: 500 }
     );
   }

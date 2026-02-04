@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { prisma } from "@/lib/prisma";
@@ -40,8 +40,8 @@ export async function GET() {
       }),
     ]);
 
-    // Check admin role after parallel fetch
-    if (!user || user.role !== "admin") {
+    // Check admin or owner role after parallel fetch
+    if (!user || ((user.role !== "admin" && user.role !== "owner"))) {
       return NextResponse.json(
         { error: "Forbidden - Admin only" },
         { status: 403 }
@@ -87,6 +87,60 @@ export async function GET() {
     console.error("Error fetching orders:", error);
     return NextResponse.json(
       { error: "Failed to fetch orders" },
+      { status: 500 }
+    );
+  }
+}
+
+// DELETE - Delete order (owner only)
+export async function DELETE(request: NextRequest) {
+  try {
+    const session = await auth.api.getSession({
+      headers: await headers(),
+    });
+
+    if (!session) {
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { role: true },
+    });
+
+    // Only owner can delete
+    if (!user || user.role !== "owner") {
+      return NextResponse.json(
+        { error: "Forbidden - Owner only" },
+        { status: 403 }
+      );
+    }
+
+    const { searchParams } = new URL(request.url);
+    const orderId = searchParams.get("id");
+
+    if (!orderId) {
+      return NextResponse.json(
+        { error: "Order ID is required" },
+        { status: 400 }
+      );
+    }
+
+    await prisma.purchaseHistory.delete({
+      where: { id: orderId },
+    });
+
+    return NextResponse.json({
+      success: true,
+      message: "Order deleted successfully",
+    });
+  } catch (error) {
+    console.error("Error deleting order:", error);
+    return NextResponse.json(
+      { error: "Failed to delete order" },
       { status: 500 }
     );
   }

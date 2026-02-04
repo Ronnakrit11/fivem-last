@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, ShoppingBag, User, CheckCircle, XCircle, Search, Clock, Loader2, Phone, CreditCard, X, Download, FileSpreadsheet, Shield } from "lucide-react";
+import { ArrowLeft, ShoppingBag, User, CheckCircle, XCircle, Search, Clock, Loader2, Phone, CreditCard, X, Download, FileSpreadsheet, Shield, Trash2 } from "lucide-react";
 import * as XLSX from "xlsx";
 import Link from "next/link";
 
@@ -52,6 +52,8 @@ export default function AdminOrdersPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [totalOrders, setTotalOrders] = useState(0);
   const pageSize = 20;
+  const [userRole, setUserRole] = useState<string>("");
+  const [deleting, setDeleting] = useState<string | null>(null);
 
   const fetchOrders = (page: number = 1) => {
     setLoading(true);
@@ -87,8 +89,38 @@ export default function AdminOrdersPage() {
 
   useEffect(() => {
     fetchOrders(1);
+    // Fetch user role
+    fetch("/api/user/info")
+      .then(res => res.json())
+      .then(data => {
+        if (data.role) setUserRole(data.role);
+      })
+      .catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const deleteOrder = async (orderId: string) => {
+    if (!confirm("คุณต้องการลบรายการนี้หรือไม่?")) return;
+    
+    setDeleting(orderId);
+    try {
+      const res = await fetch(`/api/admin/game-item-orders?id=${orderId}`, {
+        method: "DELETE",
+      });
+      const data = await res.json();
+      if (data.success) {
+        setOrders(orders.filter(o => o.id !== orderId));
+        alert("ลบรายการสำเร็จ");
+      } else {
+        alert(data.error || "ไม่สามารถลบรายการได้");
+      }
+    } catch (error) {
+      console.error("Error deleting order:", error);
+      alert("เกิดข้อผิดพลาด");
+    } finally {
+      setDeleting(null);
+    }
+  };
 
   const updateOrderStatus = async (orderId: string, status: string) => {
     setUpdating(orderId);
@@ -424,6 +456,20 @@ export default function AdminOrdersPage() {
                         ปฏิเสธ
                       </button>
                     </div>
+                  )}
+                  {/* Delete button - Owner only */}
+                  {userRole === "owner" && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        deleteOrder(order.id);
+                      }}
+                      disabled={deleting === order.id}
+                      className="mt-2 w-full px-4 py-2 bg-gray-800 text-white rounded-lg text-sm font-medium hover:bg-gray-900 disabled:opacity-50 flex items-center justify-center gap-1"
+                    >
+                      {deleting === order.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                      ลบรายการ
+                    </button>
                   )}
                 </div>
               </div>

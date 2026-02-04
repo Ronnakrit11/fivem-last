@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, ShoppingBag, User, CheckCircle, XCircle, Clock, Loader2, X, FolderOpen, FileSpreadsheet, Shield } from "lucide-react";
+import { ArrowLeft, ShoppingBag, User, CheckCircle, XCircle, Clock, Loader2, X, FolderOpen, FileSpreadsheet, Shield, Trash2 } from "lucide-react";
 import * as XLSX from "xlsx";
 import Link from "next/link";
 
@@ -46,6 +46,8 @@ export default function UserSellsPage() {
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedCatalog, setSelectedCatalog] = useState<string>("all");
   const [catalogs, setCatalogs] = useState<Catalog[]>([]);
+  const [userRole, setUserRole] = useState<string>("");
+  const [deleting, setDeleting] = useState<string | null>(null);
 
   const fetchSellItems = () => {
     fetch("/api/admin/user-sells")
@@ -85,8 +87,38 @@ export default function UserSellsPage() {
 
   useEffect(() => {
     fetchSellItems();
+    // Fetch user role
+    fetch("/api/user/info")
+      .then(res => res.json())
+      .then(data => {
+        if (data.role) setUserRole(data.role);
+      })
+      .catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const deleteItem = async (itemId: string) => {
+    if (!confirm("คุณต้องการลบรายการนี้หรือไม่?")) return;
+    
+    setDeleting(itemId);
+    try {
+      const res = await fetch(`/api/admin/user-sells?id=${itemId}`, {
+        method: "DELETE",
+      });
+      const data = await res.json();
+      if (data.success) {
+        setSellItems(sellItems.filter(i => i.id !== itemId));
+        alert("ลบรายการสำเร็จ");
+      } else {
+        alert(data.error || "ไม่สามารถลบรายการได้");
+      }
+    } catch (error) {
+      console.error("Error deleting item:", error);
+      alert("เกิดข้อผิดพลาด");
+    } finally {
+      setDeleting(null);
+    }
+  };
 
   // Filter items by selected catalog
   const filteredItems = sellItems.filter(item => {
@@ -430,6 +462,20 @@ export default function UserSellsPage() {
                         ปฏิเสธ
                       </button>
                     </div>
+                  )}
+                  {/* Delete button - Owner only */}
+                  {userRole === "owner" && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        deleteItem(item.id);
+                      }}
+                      disabled={deleting === item.id}
+                      className="mt-2 w-full px-4 py-2 bg-gray-800 text-white rounded-lg text-sm font-medium hover:bg-gray-900 disabled:opacity-50 flex items-center justify-center gap-1"
+                    >
+                      {deleting === item.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                      ลบรายการ
+                    </button>
                   )}
                 </div>
               </div>

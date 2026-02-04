@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
       where: { id: session.user.id },
     });
 
-    if (!user || (user.role !== "admin" && user.role !== "superadmin")) {
+    if (!user || (user.role !== "admin" && user.role !== "owner" && user.role !== "superadmin")) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
       where: { id: session.user.id },
     });
 
-    if (!user || (user.role !== "admin" && user.role !== "superadmin")) {
+    if (!user || (user.role !== "admin" && user.role !== "owner" && user.role !== "superadmin")) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 

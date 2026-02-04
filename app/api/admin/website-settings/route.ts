@@ -59,7 +59,7 @@ export async function PUT(request: NextRequest) {
       select: { role: true },
     });
 
-    if (user?.role !== "admin") {
+    if (user?.role !== "admin" && user?.role !== "owner") {
       return NextResponse.json(
         { error: "Forbidden - Admin only" },
         { status: 403 }

@@ -20,7 +20,7 @@ export async function GET(
       where: { id: session.user.id },
     });
 
-    if (!user || (user.role !== "admin" && user.role !== "superadmin")) {
+    if (!user || (user.role !== "admin" && user.role !== "owner" && user.role !== "superadmin")) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -63,7 +63,7 @@ export async function PATCH(
       where: { id: session.user.id },
     });
 
-    if (!user || (user.role !== "admin" && user.role !== "superadmin")) {
+    if (!user || (user.role !== "admin" && user.role !== "owner" && user.role !== "superadmin")) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -108,7 +108,7 @@ export async function DELETE(
       where: { id: session.user.id },
     });
 
-    if (!user || (user.role !== "admin" && user.role !== "superadmin")) {
+    if (!user || (user.role !== "admin" && user.role !== "owner" && user.role !== "superadmin")) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 

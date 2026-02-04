@@ -19,7 +19,7 @@ async function checkAdmin() {
     select: { role: true },
   });
 
-  if (user?.role !== 'admin') {
+  if ((user?.role !== 'admin' && user?.role !== 'owner')) {
     return { error: 'Forbidden - Admin only', status: 403 };
   }
 
