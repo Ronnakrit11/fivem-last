@@ -137,7 +137,7 @@ export async function PUT(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { userId, name, email, role, balance } = body;
+    const { userId, name, email, role, balance, fullName, phone, bankName, bankAccountReceive, bankAccountTransfer } = body;
 
     if (!userId) {
       return NextResponse.json(
@@ -153,6 +153,11 @@ export async function PUT(request: NextRequest) {
         ...(email !== undefined && { email }),
         ...(role !== undefined && { role }),
         ...(balance !== undefined && { balance: parseFloat(balance) }),
+        ...(fullName !== undefined && { fullName }),
+        ...(phone !== undefined && { phone }),
+        ...(bankName !== undefined && { bankName }),
+        ...(bankAccountReceive !== undefined && { bankAccountReceive }),
+        ...(bankAccountTransfer !== undefined && { bankAccountTransfer }),
       },
       select: {
         id: true,
@@ -160,6 +165,11 @@ export async function PUT(request: NextRequest) {
         email: true,
         role: true,
         balance: true,
+        fullName: true,
+        phone: true,
+        bankName: true,
+        bankAccountReceive: true,
+        bankAccountTransfer: true,
       },
     });
 

@@ -51,7 +51,16 @@ export default function AdminUsersPage() {
   const [deleting, setDeleting] = useState<string | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
-  const [editForm, setEditForm] = useState({ name: "", email: "", role: "", balance: "" });
+  const [editForm, setEditForm] = useState({ 
+    name: "", 
+    email: "", 
+    role: "", 
+    fullName: "",
+    phone: "",
+    bankName: "",
+    bankAccountReceive: "",
+    bankAccountTransfer: "",
+  });
 
   const fetchUsers = useCallback(() => {
     setLoading(true);
@@ -122,7 +131,11 @@ export default function AdminUsersPage() {
       name: user.name,
       email: user.email,
       role: user.role,
-      balance: "0",
+      fullName: user.fullName || "",
+      phone: user.phone || "",
+      bankName: user.bankName || "",
+      bankAccountReceive: user.bankAccountReceive || "",
+      bankAccountTransfer: user.bankAccountTransfer || "",
     });
     setShowEditModal(true);
   };
@@ -140,6 +153,11 @@ export default function AdminUsersPage() {
           name: editForm.name,
           email: editForm.email,
           role: editForm.role,
+          fullName: editForm.fullName,
+          phone: editForm.phone,
+          bankName: editForm.bankName,
+          bankAccountReceive: editForm.bankAccountReceive,
+          bankAccountTransfer: editForm.bankAccountTransfer,
         }),
       });
       const data = await res.json();
@@ -724,7 +742,7 @@ export default function AdminUsersPage() {
       {/* Edit User Modal - Owner only */}
       {showEditModal && editingUser && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full shadow-xl">
+          <div className="bg-white rounded-2xl max-w-lg w-full shadow-xl max-h-[90vh] overflow-y-auto">
             <div className="p-6">
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-xl font-bold text-gray-900">แก้ไขข้อมูลผู้ใช้</h2>
@@ -737,14 +755,28 @@ export default function AdminUsersPage() {
               </div>
 
               <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">ชื่อ</label>
-                  <input
-                    type="text"
-                    value={editForm.name}
-                    onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  />
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">ชื่อผู้ใช้</label>
+                    <input
+                      type="text"
+                      value={editForm.name}
+                      onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
+                    <select
+                      value={editForm.role}
+                      onChange={(e) => setEditForm({ ...editForm, role: e.target.value })}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900"
+                    >
+                      <option value="user">User</option>
+                      <option value="admin">Admin</option>
+                      <option value="owner">Owner</option>
+                    </select>
+                  </div>
                 </div>
 
                 <div>
@@ -753,21 +785,65 @@ export default function AdminUsersPage() {
                     type="email"
                     value={editForm.email}
                     onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900"
                   />
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
-                  <select
-                    value={editForm.role}
-                    onChange={(e) => setEditForm({ ...editForm, role: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="user">User</option>
-                    <option value="admin">Admin</option>
-                    <option value="owner">Owner</option>
-                  </select>
+                <div className="border-t pt-4">
+                  <h3 className="text-sm font-semibold text-gray-800 mb-3">ข้อมูลส่วนตัว</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">ชื่อ-นามสกุล</label>
+                      <input
+                        type="text"
+                        value={editForm.fullName}
+                        onChange={(e) => setEditForm({ ...editForm, fullName: e.target.value })}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">เบอร์โทรศัพท์</label>
+                      <input
+                        type="text"
+                        value={editForm.phone}
+                        onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="border-t pt-4">
+                  <h3 className="text-sm font-semibold text-gray-800 mb-3">ข้อมูลธนาคาร</h3>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">ชื่อธนาคาร</label>
+                      <input
+                        type="text"
+                        value={editForm.bankName}
+                        onChange={(e) => setEditForm({ ...editForm, bankName: e.target.value })}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">เลขบัญชีรับเงิน</label>
+                      <input
+                        type="text"
+                        value={editForm.bankAccountReceive}
+                        onChange={(e) => setEditForm({ ...editForm, bankAccountReceive: e.target.value })}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">เลขบัญชีโอนเงิน</label>
+                      <input
+                        type="text"
+                        value={editForm.bankAccountTransfer}
+                        onChange={(e) => setEditForm({ ...editForm, bankAccountTransfer: e.target.value })}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 text-gray-900"
+                      />
+                    </div>
+                  </div>
                 </div>
               </div>
 
