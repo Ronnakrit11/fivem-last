@@ -507,6 +507,8 @@ model UserSellItem {
   bankAccount String   @default("")
   status      String   @default("PENDING") // PENDING, APPROVED, REJECTED
   adminNote   String?
+  adminSlipImage String?
+  downloadLink   String?
   acceptedSellPolicy Boolean @default(false)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt

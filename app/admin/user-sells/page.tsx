@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, ShoppingBag, User, CheckCircle, XCircle, Clock, Loader2, X, FolderOpen, FileSpreadsheet, Shield, Trash2 } from "lucide-react";
+import { ArrowLeft, ShoppingBag, User, CheckCircle, XCircle, Clock, Loader2, X, FolderOpen, FileSpreadsheet, Shield, Trash2, Upload, Image as ImageIcon, Link as LinkIcon } from "lucide-react";
 import * as XLSX from "xlsx";
 import Link from "next/link";
 
@@ -27,6 +27,8 @@ interface SellItem {
   bankAccount: string;
   status: string;
   adminNote: string | null;
+  adminSlipImage: string | null;
+  downloadLink: string | null;
   acceptedSellPolicy: boolean;
   createdAt: Date;
 }
@@ -48,6 +50,8 @@ export default function UserSellsPage() {
   const [catalogs, setCatalogs] = useState<Catalog[]>([]);
   const [userRole, setUserRole] = useState<string>("");
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [adminSlipImage, setAdminSlipImage] = useState<string | null>(null);
+  const [uploadingSlip, setUploadingSlip] = useState(false);
 
   const fetchSellItems = () => {
     fetch("/api/admin/user-sells")
@@ -127,20 +131,54 @@ export default function UserSellsPage() {
     return item.catalog?.id === selectedCatalog;
   });
 
+  const handleAdminSlipUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingSlip(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const res = await fetch("/api/admin/user-sells/upload-slip", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await res.json();
+      if (data.success && data.url) {
+        setAdminSlipImage(data.url);
+      } else {
+        alert(data.error || "ไม่สามารถอัพโหลดสลิปได้");
+      }
+    } catch (error) {
+      console.error("Error uploading slip:", error);
+      alert("เกิดข้อผิดพลาดในการอัพโหลดสลิป");
+    } finally {
+      setUploadingSlip(false);
+    }
+  };
+
   const updateStatus = async (id: string, status: string) => {
+    if (status === "APPROVED" && !adminSlipImage) {
+      alert("กรุณาแนบสลิปการโอนเงินก่อนอนุมัติ");
+      return;
+    }
+
     setUpdating(id);
     try {
       const res = await fetch(`/api/admin/user-sells/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status }),
+        body: JSON.stringify({ status, adminSlipImage: status === "APPROVED" ? adminSlipImage : null }),
       });
       const data = await res.json();
       if (data.success) {
-        setSellItems(prev => prev.map(item => item.id === id ? { ...item, status } : item));
+        setSellItems(prev => prev.map(item => item.id === id ? { ...item, status, adminSlipImage: status === "APPROVED" ? adminSlipImage : item.adminSlipImage } : item));
         alert(`อัปเดตสถานะเป็น ${status === "APPROVED" ? "อนุมัติ" : "ปฏิเสธ"} สำเร็จ`);
         if (showDetailModal) {
           setShowDetailModal(false);
+          setAdminSlipImage(null);
         }
       } else {
         alert(data.error || "เกิดข้อผิดพลาด");
@@ -205,6 +243,7 @@ export default function UserSellsPage() {
 
   const openDetail = (item: SellItem) => {
     setSelectedItem(item);
+    setAdminSlipImage(item.adminSlipImage || null);
     setShowDetailModal(true);
   };
 
@@ -442,13 +481,12 @@ export default function UserSellsPage() {
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          updateStatus(item.id, "APPROVED");
+                          openDetail(item);
                         }}
-                        disabled={updating === item.id}
-                        className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 disabled:opacity-50 flex items-center justify-center gap-1"
+                        className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 flex items-center justify-center gap-1"
                       >
-                        {updating === item.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
-                        อนุมัติ
+                        <CheckCircle className="w-4 h-4" />
+                        ดูรายละเอียด / อนุมัติ
                       </button>
                       <button
                         onClick={(e) => {
@@ -569,6 +607,28 @@ export default function UserSellsPage() {
                 </div>
               </div>
 
+              {/* Download Link from User */}
+              <div className="space-y-3 mb-6">
+                <h4 className="font-semibold text-gray-700 flex items-center gap-2">
+                  <LinkIcon className="w-4 h-4 text-blue-500" />
+                  ลิงก์ดาวน์โหลดจาก User
+                </h4>
+                {selectedItem.downloadLink ? (
+                  <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
+                    <a
+                      href={selectedItem.downloadLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:text-blue-800 underline break-all text-sm"
+                    >
+                      {selectedItem.downloadLink}
+                    </a>
+                  </div>
+                ) : (
+                  <p className="text-sm text-gray-400 italic">ยังไม่ได้ใส่ลิงก์ดาวน์โหลด</p>
+                )}
+              </div>
+
               {/* Status */}
               <div className="mb-6">
                 <h4 className="font-semibold text-gray-700 mb-2">สถานะ</h4>
@@ -576,16 +636,76 @@ export default function UserSellsPage() {
                 <p className="text-xs text-gray-500 mt-2">ส่งเมื่อ: {formatDate(selectedItem.createdAt)}</p>
               </div>
 
+              {/* Admin Slip Image - show if already approved */}
+              {selectedItem.adminSlipImage && selectedItem.status === "APPROVED" && (
+                <div className="mb-6">
+                  <h4 className="font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                    <ImageIcon className="w-4 h-4 text-green-500" />
+                    สลิปการโอนเงิน (แอดมิน)
+                  </h4>
+                  <img
+                    src={selectedItem.adminSlipImage}
+                    alt="Admin Slip"
+                    className="w-full max-w-xs rounded-lg border border-gray-200"
+                  />
+                </div>
+              )}
+
+              {/* Admin Slip Upload - show for PENDING items */}
+              {selectedItem.status === "PENDING" && (
+                <div className="mb-6">
+                  <h4 className="font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                    <Upload className="w-4 h-4 text-green-500" />
+                    แนบสลิปการโอนเงิน <span className="text-red-500">*</span>
+                  </h4>
+                  <p className="text-xs text-gray-500 mb-3">ต้องแนบสลิปก่อนจึงจะอนุมัติได้</p>
+                  {adminSlipImage ? (
+                    <div className="relative">
+                      <img
+                        src={adminSlipImage}
+                        alt="Admin Slip Preview"
+                        className="w-full max-w-xs rounded-lg border border-green-300"
+                      />
+                      <button
+                        onClick={() => setAdminSlipImage(null)}
+                        className="absolute top-2 right-2 p-1 bg-red-500 rounded-full text-white hover:bg-red-600"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ) : (
+                    <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-green-500 transition-colors bg-gray-50">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleAdminSlipUpload}
+                        className="hidden"
+                        disabled={uploadingSlip}
+                      />
+                      {uploadingSlip ? (
+                        <Loader2 className="w-8 h-8 text-green-500 animate-spin" />
+                      ) : (
+                        <>
+                          <Upload className="w-8 h-8 text-gray-400 mb-2" />
+                          <p className="text-sm text-gray-500">คลิกเพื่ออัพโหลดสลิปการโอนเงิน</p>
+                          <p className="text-xs text-gray-400">JPG, PNG, WEBP (สูงสุด 5MB)</p>
+                        </>
+                      )}
+                    </label>
+                  )}
+                </div>
+              )}
+
               {/* Actions */}
               {selectedItem.status === "PENDING" && (
                 <div className="flex gap-3">
                   <button
                     onClick={() => updateStatus(selectedItem.id, "APPROVED")}
-                    disabled={updating === selectedItem.id}
-                    className="flex-1 px-4 py-3 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 disabled:opacity-50 flex items-center justify-center gap-2"
+                    disabled={updating === selectedItem.id || !adminSlipImage}
+                    className="flex-1 px-4 py-3 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                   >
                     {updating === selectedItem.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
-                    อนุมัติ
+                    {adminSlipImage ? "อนุมัติ" : "กรุณาแนบสลิปก่อน"}
                   </button>
                   <button
                     onClick={() => updateStatus(selectedItem.id, "REJECTED")}

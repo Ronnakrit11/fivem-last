@@ -33,11 +33,19 @@ export async function PATCH(
 
     const { id } = await params;
     const body = await request.json();
-    const { status, adminNote } = body;
+    const { status, adminNote, adminSlipImage } = body;
 
     if (!status || !["PENDING", "APPROVED", "REJECTED"].includes(status)) {
       return NextResponse.json(
         { error: "Invalid status" },
+        { status: 400 }
+      );
+    }
+
+    // Require admin slip image when approving
+    if (status === "APPROVED" && !adminSlipImage) {
+      return NextResponse.json(
+        { error: "กรุณาแนบสลิปการโอนเงินก่อนอนุมัติ" },
         { status: 400 }
       );
     }
@@ -47,6 +55,7 @@ export async function PATCH(
       data: {
         status,
         adminNote: adminNote || null,
+        adminSlipImage: adminSlipImage || null,
       },
     });
 

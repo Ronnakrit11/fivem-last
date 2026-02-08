@@ -42,6 +42,8 @@ export async function GET(request: NextRequest) {
           bankAccount: true,
           status: true,
           adminNote: true,
+          adminSlipImage: true,
+          downloadLink: true,
           acceptedSellPolicy: true,
           createdAt: true,
           user: {
