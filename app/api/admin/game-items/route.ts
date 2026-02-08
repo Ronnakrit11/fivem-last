@@ -36,10 +36,11 @@ export async function GET(request: NextRequest) {
           isAuction: true,
           auctionEndDate: true,
           isActive: true,
+          sort: true,
           createdAt: true,
           updatedAt: true,
         },
-        orderBy: { createdAt: "desc" },
+        orderBy: { sort: "asc" },
       }),
     ]);
     
@@ -64,6 +65,49 @@ export async function GET(request: NextRequest) {
       { error: "Failed to fetch game items" },
       { status: 500 }
     );
+  }
+}
+
+// PATCH - Update sort order
+export async function PATCH(request: NextRequest) {
+  try {
+    const session = await auth.api.getSession({
+      headers: request.headers,
+    });
+
+    if (!session?.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { role: true },
+    });
+
+    if (!user || (user.role !== "admin" && user.role !== "owner")) {
+      return NextResponse.json({ error: "Forbidden - Admin only" }, { status: 403 });
+    }
+
+    const body = await request.json();
+    const { items } = body as { items: { id: string; sort: number }[] };
+
+    if (!items || !Array.isArray(items)) {
+      return NextResponse.json({ error: "Items array is required" }, { status: 400 });
+    }
+
+    await prisma.$transaction(
+      items.map((item) =>
+        prisma.gameItem.update({
+          where: { id: item.id },
+          data: { sort: item.sort },
+        })
+      )
+    );
+
+    return NextResponse.json({ success: true, message: "Sort order updated" });
+  } catch (error) {
+    console.error("Error updating sort order:", error);
+    return NextResponse.json({ error: "Failed to update sort order" }, { status: 500 });
   }
 }
 

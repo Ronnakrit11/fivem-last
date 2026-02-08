@@ -3,7 +3,24 @@
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Plus, X, Upload, Loader2, Edit2, Trash2, ShoppingBag } from "lucide-react";
+import { ArrowLeft, Plus, X, Upload, Loader2, Edit2, Trash2, ShoppingBag, GripVertical } from "lucide-react";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  rectSortingStrategy,
+  useSortable,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 interface GameItem {
   id: string;
@@ -17,6 +34,101 @@ interface GameItem {
   isAuction: boolean;
   auctionEndDate: string | null;
   isActive: boolean;
+  sort: number;
+}
+
+function SortableGameItem({
+  item,
+  onEdit,
+  onDelete,
+  deleting,
+}: {
+  item: GameItem;
+  onEdit: (item: GameItem) => void;
+  onDelete: (id: string) => void;
+  deleting: string | null;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: item.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    zIndex: isDragging ? 50 : undefined,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="bg-gray-50 rounded-xl p-4 border border-gray-200 hover:border-green-300 transition-all"
+    >
+      <div className="flex items-start gap-3">
+        {/* Drag Handle */}
+        <button
+          className="cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600 mt-1 flex-shrink-0"
+          {...attributes}
+          {...listeners}
+        >
+          <GripVertical className="w-5 h-5" />
+        </button>
+        <div className="w-16 h-16 rounded-lg bg-gradient-to-br from-green-100 to-emerald-100 flex items-center justify-center overflow-hidden flex-shrink-0">
+          {item.image ? (
+            <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+          ) : (
+            <ShoppingBag className="w-8 h-8 text-green-600" />
+          )}
+        </div>
+        <div className="flex-1 min-w-0">
+          <h3 className="font-semibold text-gray-900 truncate">{item.name}</h3>
+          <p className="text-sm text-gray-500 line-clamp-1">{item.description || "ไม่มีคำอธิบาย"}</p>
+          <div className="flex items-center gap-2 mt-2 flex-wrap">
+            {item.isAuction ? (
+              <span className="text-sm font-medium text-amber-600 bg-amber-100 px-2 py-1 rounded">🔨 ประมูล</span>
+            ) : item.isCustomPrice ? (
+              <span className="text-sm font-medium text-orange-600 bg-orange-100 px-2 py-1 rounded">ราคาแล้วแต่ลูกค้าสั่ง</span>
+            ) : (
+              <span className="text-lg font-bold text-green-600">฿{item.price.toFixed(2)}</span>
+            )}
+            <span className={`text-xs px-2 py-0.5 rounded ${item.isUnlimitedStock ? 'bg-blue-100 text-blue-700' : item.stock > 0 ? 'bg-purple-100 text-purple-700' : 'bg-red-100 text-red-700'}`}>
+              {item.isUnlimitedStock ? 'ไม่จำกัด' : `คงเหลือ ${item.stock}`}
+            </span>
+            <span className={`text-xs px-2 py-0.5 rounded ${item.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+              {item.isActive ? 'เปิด' : 'ปิด'}
+            </span>
+          </div>
+        </div>
+      </div>
+      <div className="flex gap-2 mt-4 pt-4 border-t border-gray-200">
+        <button
+          onClick={() => onEdit(item)}
+          className="flex-1 px-3 py-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200 transition-colors text-sm font-medium flex items-center justify-center gap-1"
+        >
+          <Edit2 className="w-4 h-4" />
+          แก้ไข
+        </button>
+        <button
+          onClick={() => onDelete(item.id)}
+          disabled={deleting === item.id}
+          className="flex-1 px-3 py-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-colors text-sm font-medium flex items-center justify-center gap-1 disabled:opacity-50"
+        >
+          {deleting === item.id ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            <Trash2 className="w-4 h-4" />
+          )}
+          ลบ
+        </button>
+      </div>
+    </div>
+  );
 }
 
 export default function GameItemsPage() {
@@ -40,6 +152,44 @@ export default function GameItemsPage() {
     isAuction: false,
     auctionEndDate: "",
   });
+
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (over && active.id !== over.id) {
+      const oldIndex = gameItems.findIndex((item) => item.id === active.id);
+      const newIndex = gameItems.findIndex((item) => item.id === over.id);
+
+      const newItems = arrayMove(gameItems, oldIndex, newIndex);
+      const updatedItems = newItems.map((item, index) => ({
+        ...item,
+        sort: index,
+      }));
+
+      setGameItems(updatedItems);
+
+      try {
+        await fetch("/api/admin/game-items", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            items: updatedItems.map((item) => ({ id: item.id, sort: item.sort })),
+          }),
+        });
+      } catch (error) {
+        console.error("Error updating sort:", error);
+        alert("เกิดข้อผิดพลาดในการอัปเดตลำดับ");
+        setGameItems(gameItems);
+      }
+    }
+  };
 
   useEffect(() => {
     fetch("/api/admin/game-items")
@@ -250,62 +400,28 @@ export default function GameItemsPage() {
               ))}
             </div>
           ) : gameItems.length > 0 ? (
-            <div className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {gameItems.map((item) => (
-                <div
-                  key={item.id}
-                  className="bg-gray-50 rounded-xl p-4 border border-gray-200 hover:border-green-300 transition-all"
-                >
-                  <div className="flex items-start gap-4">
-                    <div className="w-16 h-16 rounded-lg bg-gradient-to-br from-green-100 to-emerald-100 flex items-center justify-center overflow-hidden flex-shrink-0">
-                      {item.image ? (
-                        <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
-                      ) : (
-                        <ShoppingBag className="w-8 h-8 text-green-600" />
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-gray-900 truncate">{item.name}</h3>
-                      <p className="text-sm text-gray-500 line-clamp-1">{item.description || "ไม่มีคำอธิบาย"}</p>
-                      <div className="flex items-center gap-2 mt-2 flex-wrap">
-                        {item.isCustomPrice ? (
-                          <span className="text-sm font-medium text-orange-600 bg-orange-100 px-2 py-1 rounded">ราคาแล้วแต่ลูกค้าสั่ง</span>
-                        ) : (
-                          <span className="text-lg font-bold text-green-600">฿{item.price.toFixed(2)}</span>
-                        )}
-                        <span className={`text-xs px-2 py-0.5 rounded ${item.isUnlimitedStock ? 'bg-blue-100 text-blue-700' : item.stock > 0 ? 'bg-purple-100 text-purple-700' : 'bg-red-100 text-red-700'}`}>
-                          {item.isUnlimitedStock ? 'ไม่จำกัด' : `คงเหลือ ${item.stock}`}
-                        </span>
-                        <span className={`text-xs px-2 py-0.5 rounded ${item.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
-                          {item.isActive ? 'เปิด' : 'ปิด'}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex gap-2 mt-4 pt-4 border-t border-gray-200">
-                    <button
-                      onClick={() => openModal(item)}
-                      className="flex-1 px-3 py-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200 transition-colors text-sm font-medium flex items-center justify-center gap-1"
-                    >
-                      <Edit2 className="w-4 h-4" />
-                      แก้ไข
-                    </button>
-                    <button
-                      onClick={() => handleDelete(item.id)}
-                      disabled={deleting === item.id}
-                      className="flex-1 px-3 py-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-colors text-sm font-medium flex items-center justify-center gap-1 disabled:opacity-50"
-                    >
-                      {deleting === item.id ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <Trash2 className="w-4 h-4" />
-                      )}
-                      ลบ
-                    </button>
-                  </div>
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
+            >
+              <SortableContext
+                items={gameItems.map((item) => item.id)}
+                strategy={rectSortingStrategy}
+              >
+                <div className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {gameItems.map((item) => (
+                    <SortableGameItem
+                      key={item.id}
+                      item={item}
+                      onEdit={openModal}
+                      onDelete={handleDelete}
+                      deleting={deleting}
+                    />
+                  ))}
                 </div>
-              ))}
-            </div>
+              </SortableContext>
+            </DndContext>
           ) : (
             <div className="p-12 text-center">
               <ShoppingBag className="w-16 h-16 text-gray-400 mx-auto mb-4" />
