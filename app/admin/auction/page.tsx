@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Gavel, User, CheckCircle, XCircle, Search, Clock, Loader2, Trophy } from "lucide-react";
+import { ArrowLeft, Gavel, User, CheckCircle, XCircle, Search, Clock, Loader2, Trophy, Upload, Image as ImageIcon, Download, FileCheck, X } from "lucide-react";
 import Link from "next/link";
 
 interface AuctionBid {
@@ -11,6 +11,9 @@ interface AuctionBid {
   userId: string;
   amount: number;
   status: string;
+  slipImage: string | null;
+  adminSlipImage: string | null;
+  downloadFile: string | null;
   createdAt: string;
   user: {
     id: string;
@@ -36,6 +39,14 @@ export default function AuctionPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [updating, setUpdating] = useState<string | null>(null);
   const [expandedItem, setExpandedItem] = useState<string | null>(null);
+  const [selectedBid, setSelectedBid] = useState<AuctionBid | null>(null);
+  const [showModal, setShowModal] = useState(false);
+  const [uploadingSlip, setUploadingSlip] = useState(false);
+  const [adminSlipUrl, setAdminSlipUrl] = useState<string | null>(null);
+  const [uploadingFile, setUploadingFile] = useState(false);
+  const [downloadFileUrl, setDownloadFileUrl] = useState<string | null>(null);
+  const [showSlipPreview, setShowSlipPreview] = useState(false);
+  const [slipPreviewUrl, setSlipPreviewUrl] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/admin/auction-bids")
@@ -63,6 +74,78 @@ export default function AuctionPage() {
       });
   }, [router]);
 
+  const refreshData = async () => {
+    const res = await fetch("/api/admin/auction-bids");
+    const data = await res.json();
+    if (data.success) {
+      setItems(data.items || []);
+    }
+  };
+
+  const openBidModal = (bid: AuctionBid) => {
+    setSelectedBid(bid);
+    setAdminSlipUrl(bid.adminSlipImage || null);
+    setDownloadFileUrl(bid.downloadFile || null);
+    setShowModal(true);
+  };
+
+  const closeBidModal = () => {
+    setShowModal(false);
+    setSelectedBid(null);
+    setAdminSlipUrl(null);
+    setDownloadFileUrl(null);
+  };
+
+  const handleAdminSlipUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingSlip(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch("/api/admin/auction-bids/upload-slip", {
+        method: "POST",
+        body: formData,
+      });
+      const data = await res.json();
+      if (data.success) {
+        setAdminSlipUrl(data.url);
+      } else {
+        alert(data.error || "อัปโหลดไม่สำเร็จ");
+      }
+    } catch {
+      alert("เกิดข้อผิดพลาดในการอัปโหลด");
+    } finally {
+      setUploadingSlip(false);
+    }
+  };
+
+  const handleDownloadFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingFile(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch("/api/admin/auction-bids/upload-file", {
+        method: "POST",
+        body: formData,
+      });
+      const data = await res.json();
+      if (data.success) {
+        setDownloadFileUrl(data.url);
+      } else {
+        alert(data.error || "อัปโหลดไม่สำเร็จ");
+      }
+    } catch {
+      alert("เกิดข้อผิดพลาดในการอัปโหลด");
+    } finally {
+      setUploadingFile(false);
+    }
+  };
+
   const approveWinner = async (bidId: string) => {
     setUpdating(bidId);
     try {
@@ -73,13 +156,35 @@ export default function AuctionPage() {
       });
       const data = await res.json();
       if (data.success) {
-        // Refresh data
-        const refreshRes = await fetch("/api/admin/auction-bids");
-        const refreshData = await refreshRes.json();
-        if (refreshData.success) {
-          setItems(refreshData.items || []);
-        }
+        await refreshData();
         alert("อนุมัติผู้ชนะประมูลสำเร็จ");
+      } else {
+        alert(data.error || "เกิดข้อผิดพลาด");
+      }
+    } catch {
+      alert("เกิดข้อผิดพลาด");
+    } finally {
+      setUpdating(null);
+    }
+  };
+
+  const updateBidStatus = async (bidId: string, status: string) => {
+    setUpdating(bidId);
+    try {
+      const payload: Record<string, string | null> = { status };
+      if (adminSlipUrl) payload.adminSlipImage = adminSlipUrl;
+      if (downloadFileUrl) payload.downloadFile = downloadFileUrl;
+
+      const res = await fetch(`/api/admin/auction-bids/${bidId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (data.success) {
+        await refreshData();
+        closeBidModal();
+        alert(data.message || "อัปเดตสำเร็จ");
       } else {
         alert(data.error || "เกิดข้อผิดพลาด");
       }
@@ -94,9 +199,23 @@ export default function AuctionPage() {
     switch (status) {
       case "WON":
         return (
-          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800">
+          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800">
             <Trophy className="w-3 h-3 mr-1" />
-            ชนะประมูล
+            ชนะ - รอชำระเงิน
+          </span>
+        );
+      case "PAID":
+        return (
+          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-800">
+            <ImageIcon className="w-3 h-3 mr-1" />
+            แนบสลิปแล้ว - รอตรวจสอบ
+          </span>
+        );
+      case "COMPLETED":
+        return (
+          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800">
+            <CheckCircle className="w-3 h-3 mr-1" />
+            เสร็จสิ้น
           </span>
         );
       case "LOST":
@@ -319,7 +438,7 @@ export default function AuctionPage() {
                                     <p className="text-xs text-gray-500">{bid.user?.email || '-'}</p>
                                   </div>
                                 </div>
-                                <div className="flex items-center gap-4">
+                                <div className="flex items-center gap-3">
                                   <div className="text-right">
                                     <p className={`font-bold ${index === 0 ? 'text-amber-600' : 'text-gray-700'}`}>
                                       ฿{bid.amount.toFixed(0)}
@@ -329,6 +448,26 @@ export default function AuctionPage() {
                                   <div className="min-w-[100px] text-right">
                                     {getStatusBadge(bid.status)}
                                   </div>
+                                  {/* Payment info indicator */}
+                                  {bid.slipImage && (
+                                    <span className="text-xs text-blue-600 flex items-center gap-1">
+                                      {bid.slipImage.startsWith("http") ? (
+                                        <><ImageIcon className="w-3 h-3" /> สลิป</>
+                                      ) : bid.slipImage.includes("Visa") || bid.slipImage.includes("Mastercard") ? (
+                                        <><span>💳</span> บัตร</>
+                                      ) : bid.slipImage.includes("Bitcoin") ? (
+                                        <><span>₿</span> Bitcoin</>
+                                      ) : (
+                                        <><ImageIcon className="w-3 h-3" /> ข้อมูลชำระ</>
+                                      )}
+                                    </span>
+                                  )}
+                                  {!bid.slipImage && bid.adminSlipImage && (
+                                    <span className="text-xs text-blue-600 flex items-center gap-1">
+                                      <ImageIcon className="w-3 h-3" />
+                                      สลิป
+                                    </span>
+                                  )}
                                   {/* Approve Button - show for all pending bids if no winner yet */}
                                   {!hasWinner && bid.status === "PENDING" && (
                                     <button
@@ -347,6 +486,19 @@ export default function AuctionPage() {
                                         <CheckCircle className="w-4 h-4" />
                                       )}
                                       อนุมัติ
+                                    </button>
+                                  )}
+                                  {/* Manage Button - show for WON, PAID bids */}
+                                  {(bid.status === "WON" || bid.status === "PAID" || bid.status === "COMPLETED") && (
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        openBidModal(bid);
+                                      }}
+                                      className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 flex items-center gap-1"
+                                    >
+                                      <FileCheck className="w-4 h-4" />
+                                      จัดการ
                                     </button>
                                   )}
                                 </div>
@@ -370,6 +522,250 @@ export default function AuctionPage() {
           )}
         </div>
       </div>
+
+      {/* Bid Detail Modal */}
+      {showModal && selectedBid && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-6 border-b border-gray-200">
+              <div>
+                <h3 className="text-lg font-bold text-gray-900">จัดการผู้ชนะประมูล</h3>
+                <p className="text-sm text-gray-500">{selectedBid.user?.name || "-"} ({selectedBid.user?.email || "-"})</p>
+              </div>
+              <button onClick={closeBidModal} className="p-2 hover:bg-gray-100 rounded-lg">
+                <X className="w-5 h-5 text-gray-500" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-5">
+              {/* Bid Info */}
+              <div className="flex items-center justify-between p-4 bg-amber-50 rounded-lg border border-amber-200">
+                <div>
+                  <p className="text-sm text-gray-600">ราคาประมูล</p>
+                  <p className="text-xl font-bold text-amber-600">฿{selectedBid.amount.toFixed(0)}</p>
+                </div>
+                <div>{getStatusBadge(selectedBid.status)}</div>
+              </div>
+
+              {/* User Payment Info / Slip Image */}
+              {selectedBid.slipImage && (
+                <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                  {selectedBid.slipImage.startsWith("http") ? (
+                    <>
+                      <p className="text-sm font-medium text-blue-800 mb-2 flex items-center gap-1">
+                        <ImageIcon className="w-4 h-4" />
+                        สลิปจาก User
+                      </p>
+                      <img
+                        src={selectedBid.slipImage}
+                        alt="User Slip"
+                        className="w-full max-w-[250px] rounded-lg border border-blue-300 cursor-pointer hover:opacity-80"
+                        onClick={() => {
+                          setSlipPreviewUrl(selectedBid.slipImage);
+                          setShowSlipPreview(true);
+                        }}
+                      />
+                      <p className="text-xs text-gray-500 mt-1">คลิกเพื่อดูขนาดเต็ม</p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-sm font-medium text-blue-800 mb-2 flex items-center gap-1">
+                        💳 ข้อมูลการชำระเงินจาก User
+                      </p>
+                      <div className="space-y-1.5">
+                        {selectedBid.slipImage.split(" | ").map((info, i) => (
+                          <p key={i} className="text-sm text-gray-700 bg-white px-3 py-1.5 rounded border border-blue-100">
+                            {info}
+                          </p>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
+
+              {/* Admin Slip Upload */}
+              {(selectedBid.status === "WON" || selectedBid.status === "PAID") && (
+                <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+                  <p className="text-sm font-medium text-gray-800 mb-2 flex items-center gap-1">
+                    <Upload className="w-4 h-4" />
+                    แนบสลิปโอนเงิน (แอดมิน)
+                  </p>
+                  {adminSlipUrl ? (
+                    <div className="space-y-2">
+                      <img
+                        src={adminSlipUrl}
+                        alt="Admin Slip"
+                        className="w-full max-w-[250px] rounded-lg border border-gray-300 cursor-pointer hover:opacity-80"
+                        onClick={() => {
+                          setSlipPreviewUrl(adminSlipUrl);
+                          setShowSlipPreview(true);
+                        }}
+                      />
+                      <button
+                        onClick={() => setAdminSlipUrl(null)}
+                        className="text-xs text-red-600 hover:text-red-700"
+                      >
+                        ลบรูป
+                      </button>
+                    </div>
+                  ) : (
+                    <label className="flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-colors">
+                      {uploadingSlip ? (
+                        <Loader2 className="w-5 h-5 animate-spin text-blue-600" />
+                      ) : (
+                        <>
+                          <Upload className="w-5 h-5 text-gray-400" />
+                          <span className="text-sm text-gray-600">เลือกรูปสลิป</span>
+                        </>
+                      )}
+                      <input
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        onChange={handleAdminSlipUpload}
+                        className="hidden"
+                        disabled={uploadingSlip}
+                      />
+                    </label>
+                  )}
+                  <p className="text-xs text-gray-500 mt-1">กรณีแอดมินโอนเงินเอง สามารถแนบสลิปได้ที่นี่</p>
+                </div>
+              )}
+
+              {/* Admin Slip Display (for COMPLETED) */}
+              {selectedBid.status === "COMPLETED" && selectedBid.adminSlipImage && (
+                <div className="p-4 bg-green-50 rounded-lg border border-green-200">
+                  <p className="text-sm font-medium text-green-800 mb-2 flex items-center gap-1">
+                    <ImageIcon className="w-4 h-4" />
+                    สลิปจากแอดมิน
+                  </p>
+                  <img
+                    src={selectedBid.adminSlipImage}
+                    alt="Admin Slip"
+                    className="w-full max-w-[250px] rounded-lg border border-green-300 cursor-pointer hover:opacity-80"
+                    onClick={() => {
+                      setSlipPreviewUrl(selectedBid.adminSlipImage);
+                      setShowSlipPreview(true);
+                    }}
+                  />
+                </div>
+              )}
+
+              {/* Download File Upload - show when PAID or WON (admin wants to complete) */}
+              {(selectedBid.status === "PAID" || selectedBid.status === "WON") && (
+                <div className="p-4 bg-purple-50 rounded-lg border border-purple-200">
+                  <p className="text-sm font-medium text-purple-800 mb-2 flex items-center gap-1">
+                    <Download className="w-4 h-4" />
+                    ไฟล์ดาวน์โหลดสำหรับ User
+                  </p>
+                  {downloadFileUrl ? (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 p-2 bg-white rounded border border-purple-200">
+                        <FileCheck className="w-4 h-4 text-purple-600" />
+                        <a href={downloadFileUrl} target="_blank" rel="noopener noreferrer" className="text-sm text-purple-600 hover:underline break-all flex-1">
+                          {downloadFileUrl.split("/").pop()}
+                        </a>
+                      </div>
+                      <button
+                        onClick={() => setDownloadFileUrl(null)}
+                        className="text-xs text-red-600 hover:text-red-700"
+                      >
+                        ลบไฟล์
+                      </button>
+                    </div>
+                  ) : (
+                    <label className="flex items-center justify-center gap-2 px-4 py-3 border-2 border-dashed border-purple-300 rounded-lg cursor-pointer hover:border-purple-400 hover:bg-purple-50 transition-colors">
+                      {uploadingFile ? (
+                        <Loader2 className="w-5 h-5 animate-spin text-purple-600" />
+                      ) : (
+                        <>
+                          <Upload className="w-5 h-5 text-purple-400" />
+                          <span className="text-sm text-purple-600">เลือกไฟล์ดาวน์โหลด</span>
+                        </>
+                      )}
+                      <input
+                        type="file"
+                        onChange={handleDownloadFileUpload}
+                        className="hidden"
+                        disabled={uploadingFile}
+                      />
+                    </label>
+                  )}
+                  <p className="text-xs text-gray-500 mt-1">ไฟล์นี้จะแสดงให้ User ดาวน์โหลดหลังยืนยันการชำระเงิน</p>
+                </div>
+              )}
+
+              {/* Download File Display (for COMPLETED) */}
+              {selectedBid.status === "COMPLETED" && selectedBid.downloadFile && (
+                <div className="p-4 bg-green-50 rounded-lg border border-green-200">
+                  <p className="text-sm font-medium text-green-800 mb-2 flex items-center gap-1">
+                    <Download className="w-4 h-4" />
+                    ไฟล์ดาวน์โหลด (ส่งให้ User แล้ว)
+                  </p>
+                  <a href={selectedBid.downloadFile} target="_blank" rel="noopener noreferrer" className="text-sm text-green-600 hover:underline break-all">
+                    {selectedBid.downloadFile.split("/").pop()}
+                  </a>
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              <div className="flex gap-3 pt-2">
+                {/* WON status: admin can mark as PAID (with admin slip) or COMPLETED (with slip + file) */}
+                {selectedBid.status === "WON" && (
+                  <>
+                    {adminSlipUrl && (
+                      <button
+                        onClick={() => updateBidStatus(selectedBid.id, "PAID")}
+                        disabled={updating === selectedBid.id}
+                        className="flex-1 px-4 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center gap-2"
+                      >
+                        {updating === selectedBid.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImageIcon className="w-4 h-4" />}
+                        บันทึกสลิป (แอดมินโอนเอง)
+                      </button>
+                    )}
+                    {(adminSlipUrl || selectedBid.slipImage) && downloadFileUrl && (
+                      <button
+                        onClick={() => updateBidStatus(selectedBid.id, "COMPLETED")}
+                        disabled={updating === selectedBid.id}
+                        className="flex-1 px-4 py-3 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 disabled:opacity-50 flex items-center justify-center gap-2"
+                      >
+                        {updating === selectedBid.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
+                        ยืนยันและส่งไฟล์
+                      </button>
+                    )}
+                  </>
+                )}
+
+                {/* PAID status: admin confirms payment and attaches download file */}
+                {selectedBid.status === "PAID" && (
+                  <button
+                    onClick={() => updateBidStatus(selectedBid.id, "COMPLETED")}
+                    disabled={updating === selectedBid.id || !downloadFileUrl}
+                    className="flex-1 px-4 py-3 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 disabled:opacity-50 flex items-center justify-center gap-2"
+                  >
+                    {updating === selectedBid.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle className="w-4 h-4" />}
+                    {downloadFileUrl ? "ยืนยันการชำระเงินและส่งไฟล์" : "กรุณาอัปโหลดไฟล์ดาวน์โหลดก่อน"}
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Slip Preview Modal */}
+      {showSlipPreview && slipPreviewUrl && (
+        <div
+          className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-[60] p-4 cursor-pointer"
+          onClick={() => setShowSlipPreview(false)}
+        >
+          <div className="max-w-2xl w-full max-h-[90vh] overflow-auto">
+            <img src={slipPreviewUrl} alt="สลิป" className="w-full rounded-lg" />
+            <p className="text-center text-gray-400 text-sm mt-3">คลิกเพื่อปิด</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

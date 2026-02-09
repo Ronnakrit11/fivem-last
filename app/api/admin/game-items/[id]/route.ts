@@ -36,7 +36,7 @@ export async function PUT(
     }
 
     const body = await request.json();
-    const { name, description, image, price, isActive, isCustomPrice, stock, isUnlimitedStock, isAuction, auctionEndDate } = body;
+    const { name, description, image, price, isActive, isCustomPrice, stock, isUnlimitedStock, isAuction, auctionEndDate, auctionFile } = body;
 
     if (!name) {
       return NextResponse.json(
@@ -73,6 +73,7 @@ export async function PUT(
         isUnlimitedStock: isAuction ? false : (isUnlimitedStock !== false),
         isAuction: isAuction || false,
         auctionEndDate: isAuction ? new Date(auctionEndDate) : null,
+        auctionFile: isAuction ? (auctionFile || null) : null,
         isActive: isActive !== undefined ? isActive : true,
       },
     });

@@ -36,9 +36,9 @@ export async function PATCH(
     }
 
     const body = await request.json();
-    const { status } = body;
+    const { status, adminSlipImage, downloadFile } = body;
 
-    if (!status || !["PENDING", "WON", "LOST"].includes(status)) {
+    if (!status || !["PENDING", "WON", "LOST", "PAID", "COMPLETED"].includes(status)) {
       return NextResponse.json(
         { error: "Invalid status" },
         { status: 400 }
@@ -72,7 +72,10 @@ export async function PATCH(
         // Set this bid as WON
         prisma.auctionBid.update({
           where: { id },
-          data: { status: "WON" },
+          data: {
+            status: "WON",
+            adminSlipImage: adminSlipImage || null,
+          },
         }),
         // Deactivate the auction item
         prisma.gameItem.update({
@@ -80,6 +83,25 @@ export async function PATCH(
           data: { isActive: false },
         }),
       ]);
+    } else if (status === "PAID") {
+      // Admin uploads slip on behalf of user (marking as paid)
+      await prisma.auctionBid.update({
+        where: { id },
+        data: {
+          status: "PAID",
+          adminSlipImage: adminSlipImage || bid.adminSlipImage,
+        },
+      });
+    } else if (status === "COMPLETED") {
+      // Admin confirms payment and attaches download file
+      await prisma.auctionBid.update({
+        where: { id },
+        data: {
+          status: "COMPLETED",
+          downloadFile: downloadFile || null,
+          adminSlipImage: adminSlipImage || bid.adminSlipImage,
+        },
+      });
     } else {
       await prisma.auctionBid.update({
         where: { id },
@@ -104,7 +126,9 @@ export async function PATCH(
     return NextResponse.json({
       success: true,
       bid: updatedBid,
-      message: status === "WON" ? "อนุมัติผู้ชนะประมูลสำเร็จ" : "อัปเดตสถานะสำเร็จ",
+      message: status === "WON" ? "อนุมัติผู้ชนะประมูลสำเร็จ" : 
+               status === "COMPLETED" ? "ยืนยันการชำระเงินสำเร็จ" :
+               "อัปเดตสถานะสำเร็จ",
     });
   } catch (error) {
     console.error("Error updating auction bid:", error);

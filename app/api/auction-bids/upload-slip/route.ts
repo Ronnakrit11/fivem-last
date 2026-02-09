@@ -1,0 +1,52 @@
+import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@/lib/auth";
+import { put } from "@vercel/blob";
+
+// POST - Upload slip image for auction bid
+export async function POST(request: NextRequest) {
+  try {
+    const session = await auth.api.getSession({
+      headers: request.headers,
+    });
+
+    if (!session?.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const formData = await request.formData();
+    const file = formData.get("file") as File;
+
+    if (!file) {
+      return NextResponse.json({ error: "ไม่พบไฟล์" }, { status: 400 });
+    }
+
+    const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
+    if (!allowedTypes.includes(file.type)) {
+      return NextResponse.json(
+        { error: "รองรับเฉพาะไฟล์รูปภาพ (JPG, PNG, WEBP)" },
+        { status: 400 }
+      );
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      return NextResponse.json(
+        { error: "ไฟล์ต้องมีขนาดไม่เกิน 5MB" },
+        { status: 400 }
+      );
+    }
+
+    const filename = `auction-slips/${Date.now()}-${file.name}`;
+    const blob = await put(filename, file, { access: "public" });
+
+    return NextResponse.json({
+      success: true,
+      url: blob.url,
+    });
+  } catch (error) {
+    console.error("Error uploading auction slip:", error);
+    return NextResponse.json(
+      { error: "เกิดข้อผิดพลาดในการอัปโหลด" },
+      { status: 500 }
+    );
+  }
+}

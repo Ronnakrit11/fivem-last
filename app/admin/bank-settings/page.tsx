@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Building2, Plus, Pencil, Trash2, X, Loader2, Check, Upload, QrCode, Image as ImageIcon } from "lucide-react";
+import { ArrowLeft, Building2, Plus, Pencil, Trash2, X, Loader2, Check, Upload, QrCode, Image as ImageIcon, Bitcoin, Wallet } from "lucide-react";
 import Link from "next/link";
 
 interface BankAccount {
@@ -11,6 +11,7 @@ interface BankAccount {
   accountNumber: string;
   accountName: string;
   qrCodeUrl: string | null;
+  accountType: string;
   isActive: boolean;
   sortOrder: number;
 }
@@ -46,6 +47,7 @@ export default function BankSettingsPage() {
     accountNumber: "",
     accountName: "",
     qrCodeUrl: "",
+    accountType: "bank",
     isActive: true,
   });
   const [uploadingQr, setUploadingQr] = useState(false);
@@ -83,6 +85,7 @@ export default function BankSettingsPage() {
       accountNumber: "",
       accountName: "",
       qrCodeUrl: "",
+      accountType: "bank",
       isActive: true,
     });
     setShowModal(true);
@@ -95,6 +98,7 @@ export default function BankSettingsPage() {
       accountNumber: account.accountNumber,
       accountName: account.accountName,
       qrCodeUrl: account.qrCodeUrl || "",
+      accountType: account.accountType || "bank",
       isActive: account.isActive,
     });
     setShowModal(true);
@@ -251,20 +255,27 @@ export default function BankSettingsPage() {
                 >
                   <div className="flex items-center gap-4">
                     <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${
-                      account.isActive ? "bg-emerald-100" : "bg-gray-200"
+                      account.accountType === "bitcoin"
+                        ? account.isActive ? "bg-orange-100" : "bg-gray-200"
+                        : account.isActive ? "bg-emerald-100" : "bg-gray-200"
                     }`}>
-                      <Building2 className={`w-6 h-6 ${
-                        account.isActive ? "text-emerald-600" : "text-gray-400"
-                      }`} />
+                      {account.accountType === "bitcoin" ? (
+                        <Bitcoin className={`w-6 h-6 ${account.isActive ? "text-orange-600" : "text-gray-400"}`} />
+                      ) : (
+                        <Building2 className={`w-6 h-6 ${account.isActive ? "text-emerald-600" : "text-gray-400"}`} />
+                      )}
                     </div>
                     <div>
-                      <p className={`font-semibold ${
-                        account.isActive ? "text-gray-900" : "text-gray-500"
-                      }`}>
-                        {account.bankName}
-                      </p>
+                      <div className="flex items-center gap-2">
+                        <p className={`font-semibold ${account.isActive ? "text-gray-900" : "text-gray-500"}`}>
+                          {account.bankName}
+                        </p>
+                        {account.accountType === "bitcoin" && (
+                          <span className="text-xs px-2 py-0.5 bg-orange-100 text-orange-700 rounded-full font-medium">Bitcoin</span>
+                        )}
+                      </div>
                       <p className="text-sm text-gray-600">
-                        {account.accountNumber} - {account.accountName}
+                        {account.accountType === "bitcoin" ? "Wallet: " : ""}{account.accountNumber} - {account.accountName}
                       </p>
                     </div>
                   </div>
@@ -328,29 +339,80 @@ export default function BankSettingsPage() {
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-4">
+                {/* Account Type Selector */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    ธนาคาร <span className="text-red-500">*</span>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    ประเภท
                   </label>
-                  <select
-                    value={formData.bankName}
-                    onChange={(e) =>
-                      setFormData({ ...formData, bankName: e.target.value })
-                    }
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
-                  >
-                    <option value="">เลือกธนาคาร</option>
-                    {THAI_BANKS.map((bank) => (
-                      <option key={bank} value={bank}>
-                        {bank}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setFormData({ ...formData, accountType: "bank", bankName: "" })}
+                      className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border-2 transition-all text-sm font-medium ${
+                        formData.accountType === "bank"
+                          ? "border-emerald-500 bg-emerald-50 text-emerald-700"
+                          : "border-gray-200 bg-white text-gray-600 hover:border-gray-300"
+                      }`}
+                    >
+                      <Building2 className="w-4 h-4" />
+                      บัญชีธนาคาร
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setFormData({ ...formData, accountType: "bitcoin", bankName: "Bitcoin" })}
+                      className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border-2 transition-all text-sm font-medium ${
+                        formData.accountType === "bitcoin"
+                          ? "border-orange-500 bg-orange-50 text-orange-700"
+                          : "border-gray-200 bg-white text-gray-600 hover:border-gray-300"
+                      }`}
+                    >
+                      <Bitcoin className="w-4 h-4" />
+                      Bitcoin Wallet
+                    </button>
+                  </div>
                 </div>
+
+                {/* Bank Name - show dropdown for bank, hidden for bitcoin */}
+                {formData.accountType === "bank" ? (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      ธนาคาร <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      value={formData.bankName}
+                      onChange={(e) =>
+                        setFormData({ ...formData, bankName: e.target.value })
+                      }
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                    >
+                      <option value="">เลือกธนาคาร</option>
+                      {THAI_BANKS.map((bank) => (
+                        <option key={bank} value={bank}>
+                          {bank}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                ) : (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      ชื่อ Wallet <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.bankName}
+                      onChange={(e) =>
+                        setFormData({ ...formData, bankName: e.target.value })
+                      }
+                      placeholder="เช่น Bitcoin, USDT (TRC20)"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                    />
+                  </div>
+                )}
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    เลขบัญชี <span className="text-red-500">*</span>
+                    {formData.accountType === "bitcoin" ? "Wallet Address" : "เลขบัญชี"} <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
@@ -358,14 +420,14 @@ export default function BankSettingsPage() {
                     onChange={(e) =>
                       setFormData({ ...formData, accountNumber: e.target.value })
                     }
-                    placeholder="xxx-x-xxxxx-x"
+                    placeholder={formData.accountType === "bitcoin" ? "bc1q... หรือ 0x..." : "xxx-x-xxxxx-x"}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                   />
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    ชื่อบัญชี <span className="text-red-500">*</span>
+                    {formData.accountType === "bitcoin" ? "ชื่อเจ้าของ Wallet" : "ชื่อบัญชี"} <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
@@ -373,7 +435,7 @@ export default function BankSettingsPage() {
                     onChange={(e) =>
                       setFormData({ ...formData, accountName: e.target.value })
                     }
-                    placeholder="ชื่อ-นามสกุล"
+                    placeholder={formData.accountType === "bitcoin" ? "ชื่อเจ้าของ" : "ชื่อ-นามสกุล"}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                   />
                 </div>

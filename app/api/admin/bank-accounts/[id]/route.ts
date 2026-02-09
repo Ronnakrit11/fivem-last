@@ -26,7 +26,7 @@ export async function PUT(
 
     const { id } = await params;
     const body = await request.json();
-    const { bankName, accountNumber, accountName, isActive, sortOrder, qrCodeUrl } = body;
+    const { bankName, accountNumber, accountName, isActive, sortOrder, qrCodeUrl, accountType } = body;
 
     const bankAccount = await prisma.bankAccount.update({
       where: { id },
@@ -37,6 +37,7 @@ export async function PUT(
         ...(isActive !== undefined && { isActive }),
         ...(sortOrder !== undefined && { sortOrder }),
         ...(qrCodeUrl !== undefined && { qrCodeUrl: qrCodeUrl || null }),
+        ...(accountType !== undefined && { accountType }),
       },
     });
 

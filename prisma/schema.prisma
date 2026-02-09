@@ -402,6 +402,7 @@ model GameItem {
   isUnlimitedStock Boolean  @default(true)
   isAuction       Boolean   @default(false)
   auctionEndDate  DateTime?
+  auctionFile     String?
   isActive        Boolean   @default(true)
   sort            Int       @default(0)
   createdAt       DateTime  @default(now())
@@ -444,15 +445,18 @@ enum GameItemOrderStatus {
 }
 
 model AuctionBid {
-  id          String    @id @default(cuid())
-  gameItemId  String
-  gameItem    GameItem  @relation(fields: [gameItemId], references: [id])
-  userId      String
-  user        User      @relation(fields: [userId], references: [id])
-  amount      Float
-  status      AuctionBidStatus @default(PENDING)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id             String    @id @default(cuid())
+  gameItemId     String
+  gameItem       GameItem  @relation(fields: [gameItemId], references: [id])
+  userId         String
+  user           User      @relation(fields: [userId], references: [id])
+  amount         Float
+  status         AuctionBidStatus @default(PENDING)
+  slipImage      String?
+  adminSlipImage String?
+  downloadFile   String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
   @@map("auction_bid")
 }
@@ -460,6 +464,8 @@ model AuctionBid {
 enum AuctionBidStatus {
   PENDING
   WON
+  PAID
+  COMPLETED
   LOST
 }
 
@@ -469,6 +475,7 @@ model BankAccount {
   accountNumber String
   accountName   String
   qrCodeUrl     String?
+  accountType   String   @default("bank")
   isActive      Boolean  @default(true)
   sortOrder     Int      @default(0)
   createdAt     DateTime @default(now())
@@ -564,4 +571,15 @@ model SellPolicy {
   updatedAt   DateTime @updatedAt
 
   @@map("sell_policy")
+}
+
+model TelegramConfig {
+  id          String   @id @default(cuid())
+  botToken    String   @default("")
+  chatId      String   @default("")
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("telegram_config")
 }

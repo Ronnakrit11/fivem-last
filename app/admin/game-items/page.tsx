@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Plus, X, Upload, Loader2, Edit2, Trash2, ShoppingBag, GripVertical } from "lucide-react";
+import { ArrowLeft, Plus, X, Upload, Loader2, Edit2, Trash2, ShoppingBag, GripVertical, FileUp, FileCheck } from "lucide-react";
 import {
   DndContext,
   closestCenter,
@@ -33,6 +33,7 @@ interface GameItem {
   isUnlimitedStock: boolean;
   isAuction: boolean;
   auctionEndDate: string | null;
+  auctionFile: string | null;
   isActive: boolean;
   sort: number;
 }
@@ -141,6 +142,9 @@ export default function GameItemsPage() {
   const [submitting, setSubmitting] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const auctionFileInputRef = useRef<HTMLInputElement>(null);
+  const [uploadingAuctionFile, setUploadingAuctionFile] = useState(false);
+  const [auctionFileName, setAuctionFileName] = useState("");
   const [formData, setFormData] = useState({
     name: "",
     description: "",
@@ -151,6 +155,7 @@ export default function GameItemsPage() {
     isUnlimitedStock: true,
     isAuction: false,
     auctionEndDate: "",
+    auctionFile: "",
   });
 
   const sensors = useSensors(
@@ -245,6 +250,35 @@ export default function GameItemsPage() {
     }
   };
 
+  const handleAuctionFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingAuctionFile(true);
+    try {
+      const uploadFormData = new FormData();
+      uploadFormData.append("file", file);
+
+      const res = await fetch("/api/admin/game-items/upload-file", {
+        method: "POST",
+        body: uploadFormData,
+      });
+
+      const data = await res.json();
+      if (data.success && data.url) {
+        setFormData(prev => ({ ...prev, auctionFile: data.url }));
+        setAuctionFileName(data.fileName || file.name);
+      } else {
+        alert(data.error || "ไม่สามารถอัปโหลดไฟล์ได้");
+      }
+    } catch (error) {
+      console.error("Error uploading auction file:", error);
+      alert("เกิดข้อผิดพลาดในการอัปโหลดไฟล์");
+    } finally {
+      setUploadingAuctionFile(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name) {
@@ -285,7 +319,8 @@ export default function GameItemsPage() {
         }
         setIsModalOpen(false);
         setEditingItem(null);
-        setFormData({ name: "", description: "", image: "", price: "", isCustomPrice: false, stock: "", isUnlimitedStock: true, isAuction: false, auctionEndDate: "" });
+        setFormData({ name: "", description: "", image: "", price: "", isCustomPrice: false, stock: "", isUnlimitedStock: true, isAuction: false, auctionEndDate: "", auctionFile: "" });
+        setAuctionFileName("");
       } else {
         alert(data.error || "เกิดข้อผิดพลาด");
       }
@@ -334,10 +369,13 @@ export default function GameItemsPage() {
         isUnlimitedStock: item.isUnlimitedStock !== false,
         isAuction: item.isAuction || false,
         auctionEndDate: item.auctionEndDate ? new Date(item.auctionEndDate).toISOString().slice(0, 16) : "",
+        auctionFile: item.auctionFile || "",
       });
+      setAuctionFileName(item.auctionFile ? item.auctionFile.split("/").pop() || "" : "");
     } else {
       setEditingItem(null);
-      setFormData({ name: "", description: "", image: "", price: "", isCustomPrice: false, stock: "", isUnlimitedStock: true, isAuction: false, auctionEndDate: "" });
+      setFormData({ name: "", description: "", image: "", price: "", isCustomPrice: false, stock: "", isUnlimitedStock: true, isAuction: false, auctionEndDate: "", auctionFile: "" });
+      setAuctionFileName("");
     }
     setIsModalOpen(true);
   };
@@ -608,6 +646,62 @@ export default function GameItemsPage() {
                       onChange={(e) => setFormData(prev => ({ ...prev, auctionEndDate: e.target.value }))}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
                       required={formData.isAuction}
+                    />
+                  </div>
+                )}
+
+                {/* ไฟล์สำหรับผู้ชนะประมูล */}
+                {formData.isAuction && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      ไฟล์สำหรับผู้ชนะประมูล
+                    </label>
+                    {formData.auctionFile ? (
+                      <div className="flex items-center gap-3 p-3 bg-green-50 rounded-lg border border-green-200">
+                        <FileCheck className="w-5 h-5 text-green-600 flex-shrink-0" />
+                        <span className="text-sm text-green-700 truncate flex-1">{auctionFileName || "ไฟล์ที่แนบ"}</span>
+                        <button
+                          type="button"
+                          onClick={() => auctionFileInputRef.current?.click()}
+                          disabled={uploadingAuctionFile}
+                          className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-xs"
+                        >
+                          {uploadingAuctionFile ? "กำลังอัปโหลด..." : "เปลี่ยนไฟล์"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { setFormData(prev => ({ ...prev, auctionFile: "" })); setAuctionFileName(""); }}
+                          className="px-3 py-1.5 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-colors text-xs"
+                        >
+                          ลบ
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => auctionFileInputRef.current?.click()}
+                        disabled={uploadingAuctionFile}
+                        className="w-full py-6 border-2 border-dashed border-amber-300 rounded-lg hover:border-amber-400 hover:bg-amber-50 transition-all flex flex-col items-center justify-center gap-2"
+                      >
+                        {uploadingAuctionFile ? (
+                          <>
+                            <Loader2 className="w-6 h-6 text-amber-500 animate-spin" />
+                            <span className="text-sm text-gray-500">กำลังอัปโหลด...</span>
+                          </>
+                        ) : (
+                          <>
+                            <FileUp className="w-6 h-6 text-amber-400" />
+                            <span className="text-sm text-gray-600">คลิกเพื่อแนบไฟล์สำหรับผู้ชนะ</span>
+                            <span className="text-xs text-gray-400">รองรับทุกประเภทไฟล์ (สูงสุด 100MB)</span>
+                          </>
+                        )}
+                      </button>
+                    )}
+                    <input
+                      ref={auctionFileInputRef}
+                      type="file"
+                      onChange={handleAuctionFileUpload}
+                      className="hidden"
                     />
                   </div>
                 )}

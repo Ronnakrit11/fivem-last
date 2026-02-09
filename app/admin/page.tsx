@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Settings, Users, Activity, FileText, Gamepad2, Building2, MessageCircle, Shield } from "lucide-react";
+import { Settings, Users, Activity, FileText, Gamepad2, Building2, MessageCircle, Shield, Bot } from "lucide-react";
 
 export default function AdminPage() {
   const router = useRouter();
@@ -304,6 +304,23 @@ export default function AdminPage() {
             </div>
             <p className="text-sm text-gray-600">
               ตั้งค่านโยบายที่แสดงตอนสมัครสมาชิก
+            </p>
+          </Link>
+
+          <Link
+            href="/admin/telegram-settings"
+            className="bg-white rounded-xl shadow-md p-6 border border-gray-200 hover:shadow-lg transition-shadow cursor-pointer group"
+          >
+            <div className="flex items-center mb-4">
+              <div className="w-12 h-12 bg-sky-100 rounded-lg flex items-center justify-center mr-4">
+                <Bot className="w-6 h-6 text-sky-600" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900 group-hover:text-sky-600 transition-colors">
+                ตั้งค่าแจ้งเตือน Telegram
+              </h3>
+            </div>
+            <p className="text-sm text-gray-600">
+              ตั้งค่า Bot Token และ Chat ID เพื่อรับแจ้งเตือนคำสั่งซื้อ
             </p>
           </Link>
         </div>

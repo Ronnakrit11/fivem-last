@@ -35,6 +35,7 @@ export async function GET(request: NextRequest) {
           isUnlimitedStock: true,
           isAuction: true,
           auctionEndDate: true,
+          auctionFile: true,
           isActive: true,
           sort: true,
           createdAt: true,
@@ -140,7 +141,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { name, description, image, price, isCustomPrice, stock, isUnlimitedStock, isAuction, auctionEndDate } = body;
+    const { name, description, image, price, isCustomPrice, stock, isUnlimitedStock, isAuction, auctionEndDate, auctionFile } = body;
 
     if (!name) {
       return NextResponse.json(
@@ -176,6 +177,7 @@ export async function POST(request: NextRequest) {
         isUnlimitedStock: isAuction ? false : (isUnlimitedStock !== false),
         isAuction: isAuction || false,
         auctionEndDate: isAuction ? new Date(auctionEndDate) : null,
+        auctionFile: isAuction ? (auctionFile || null) : null,
       },
     });
 

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
+import { sendTelegramNotification } from "@/lib/telegram";
 
 // POST - Create new game item order
 export async function POST(request: NextRequest) {
@@ -95,6 +96,16 @@ export async function POST(request: NextRequest) {
         },
       });
     });
+
+    // Send Telegram notification
+    sendTelegramNotification(
+      `🛒 <b>คำสั่งซื้อไอเทมเกมใหม่!</b>\n\n` +
+      `📦 สินค้า: ${order.gameItem.name}\n` +
+      `💰 จำนวนเงิน: ฿${orderAmount.toFixed(2)}\n` +
+      `👤 ผู้สั่ง: ${buyerName || session.user.name || "-"}\n` +
+      `📱 เบอร์: ${buyerPhone || "-"}\n` +
+      `🕐 เวลา: ${new Date().toLocaleString("th-TH", { timeZone: "Asia/Bangkok" })}`
+    ).catch(() => {});
 
     return NextResponse.json({
       success: true,

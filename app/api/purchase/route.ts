@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
+import { sendTelegramNotification } from "@/lib/telegram";
 
 export async function POST(request: NextRequest) {
   try {
@@ -111,6 +112,16 @@ export async function POST(request: NextRequest) {
         status: "success",
       },
     });
+
+    // Send Telegram notification
+    sendTelegramNotification(
+      `🎮 <b>การซื้อสินค้าผ่านระบบ!</b>\n\n` +
+      `📦 สินค้า: ${productName || productId}\n` +
+      `💰 ราคา: ฿${price.toFixed(2)}\n` +
+      `👤 ผู้ซื้อ: ${user.email || "-"}\n` +
+      `🔖 Ref: ${reference}\n` +
+      `🕐 เวลา: ${new Date().toLocaleString("th-TH", { timeZone: "Asia/Bangkok" })}`
+    ).catch(() => {});
 
     // Return success
     return NextResponse.json({

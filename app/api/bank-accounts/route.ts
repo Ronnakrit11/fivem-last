@@ -12,6 +12,7 @@ export async function GET(request: NextRequest) {
         accountNumber: true,
         accountName: true,
         qrCodeUrl: true,
+        accountType: true,
       },
     });
 

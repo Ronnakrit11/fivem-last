@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { auth } from "@/lib/auth";
 
+// GET - Get telegram config
 export async function GET(request: NextRequest) {
   try {
     const session = await auth.api.getSession({
@@ -21,20 +22,22 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const bankAccounts = await prisma.bankAccount.findMany({
-      orderBy: { sortOrder: "asc" },
-    });
+    const config = await prisma.telegramConfig.findFirst();
 
-    return NextResponse.json({ success: true, data: bankAccounts });
+    return NextResponse.json({
+      success: true,
+      config: config || { botToken: "", chatId: "", isActive: true },
+    });
   } catch (error) {
-    console.error("Error fetching bank accounts:", error);
+    console.error("Error fetching telegram config:", error);
     return NextResponse.json(
-      { error: "Failed to fetch bank accounts" },
+      { error: "Failed to fetch config" },
       { status: 500 }
     );
   }
 }
 
+// POST - Create or update telegram config
 export async function POST(request: NextRequest) {
   try {
     const session = await auth.api.getSession({
@@ -55,37 +58,38 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { bankName, accountNumber, accountName, isActive, qrCodeUrl, accountType } = body;
+    const { botToken, chatId, isActive } = body;
 
-    if (!bankName || !accountNumber || !accountName) {
-      return NextResponse.json(
-        { error: "กรุณากรอกข้อมูลให้ครบถ้วน" },
-        { status: 400 }
-      );
+    const existing = await prisma.telegramConfig.findFirst();
+
+    let config;
+    if (existing) {
+      config = await prisma.telegramConfig.update({
+        where: { id: existing.id },
+        data: {
+          botToken: botToken ?? existing.botToken,
+          chatId: chatId ?? existing.chatId,
+          isActive: isActive ?? existing.isActive,
+        },
+      });
+    } else {
+      config = await prisma.telegramConfig.create({
+        data: {
+          botToken: botToken || "",
+          chatId: chatId || "",
+          isActive: isActive ?? true,
+        },
+      });
     }
 
-    // Get max sort order
-    const maxOrder = await prisma.bankAccount.aggregate({
-      _max: { sortOrder: true },
+    return NextResponse.json({
+      success: true,
+      config,
     });
-
-    const bankAccount = await prisma.bankAccount.create({
-      data: {
-        bankName,
-        accountNumber,
-        accountName,
-        qrCodeUrl: qrCodeUrl || null,
-        accountType: accountType || "bank",
-        isActive: isActive ?? true,
-        sortOrder: (maxOrder._max.sortOrder ?? 0) + 1,
-      },
-    });
-
-    return NextResponse.json({ success: true, data: bankAccount });
   } catch (error) {
-    console.error("Error creating bank account:", error);
+    console.error("Error saving telegram config:", error);
     return NextResponse.json(
-      { error: "Failed to create bank account" },
+      { error: "Failed to save config" },
       { status: 500 }
     );
   }
