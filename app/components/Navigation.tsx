@@ -216,6 +216,14 @@ export default function Navigation({ session, logoUrl: initialLogoUrl }: Navigat
                         <History className="w-4 h-4 mr-3 flex-shrink-0" />
                         <span className="font-medium">ประวัติการประมูล</span>
                       </Link>
+                      <Link
+                        href="/real-product-history"
+                        onClick={() => setIsDropdownOpen(false)}
+                        className="flex items-center px-4 py-2.5 text-sm text-white hover:bg-white/15 transition-colors duration-150 rounded-lg mx-2"
+                      >
+                        <History className="w-4 h-4 mr-3 flex-shrink-0" />
+                        <span className="font-medium">ประวัติซื้อสินค้าจริง</span>
+                      </Link>
                     </div>
 
                     {/* Logout */}

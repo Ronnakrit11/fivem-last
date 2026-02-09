@@ -1,6 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
-import { Crown, Gamepad2, CreditCard, Gavel } from "lucide-react";
+import { Crown, Gamepad2, CreditCard, Gavel, Package } from "lucide-react";
 import dynamic from "next/dynamic";
 import { Suspense } from "react";
 import RecentOrders from "./components/RecentOrders";
@@ -9,6 +9,7 @@ import SellItemForm from "./components/SellItemForm";
 import DynamicBanner from "./components/DynamicBanner";
 import HomeGames from "./home-games";
 import HomeCards from "./home-cards";
+import HomeRealProducts from "./home-real-products";
 
 // Dynamic import for HomeGameItems to reduce initial bundle size
 const HomeGameItems = dynamic(() => import("./home-game-items"), {
@@ -41,6 +42,16 @@ interface GameItem {
   isUnlimitedStock: boolean;
   isAuction: boolean;
   auctionEndDate: string | null;
+  isActive: boolean;
+}
+
+interface RealProduct {
+  id: string;
+  name: string;
+  description: string;
+  image: string;
+  price: number;
+  stock: number;
   isActive: boolean;
 }
 
@@ -121,15 +132,32 @@ async function getCards(): Promise<Card[]> {
   return [];
 }
 
+async function getRealProducts(): Promise<RealProduct[]> {
+  try {
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000";
+    const res = await fetch(`${baseUrl}/api/real-products`, {
+      cache: "no-store",
+    });
+    if (res.ok) {
+      const data = await res.json();
+      return data.data || [];
+    }
+  } catch (error) {
+    console.error("Error fetching real products:", error);
+  }
+  return [];
+}
+
 // Enable ISR (Incremental Static Regeneration)
 export const revalidate = 60;
 
 export default async function Home() {
   // Fetch all data in parallel
-  const [gameItems, games, cards] = await Promise.all([
+  const [gameItems, games, cards, realProducts] = await Promise.all([
     getGameItems(),
     getFeaturedGames(),
     getCards(),
+    getRealProducts(),
   ]);
 
   return (
@@ -174,6 +202,26 @@ export default async function Home() {
                 </p>
               </div>
               <HomeCards cards={cards} />
+            </div>
+          )}
+
+          {/* Real Products Section - สินค้าบริษัท */}
+          {realProducts.length > 0 && (
+            <div className="mt-20 md:mt-24">
+              <div className="text-center mb-10 md:mb-14 relative">
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-32 bg-rose-500/20 blur-[60px] rounded-full -z-10" />
+                <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl glass-panel mb-6 group hover:scale-110 transition-transform duration-300">
+                  <Package className="w-8 h-8 text-rose-400 drop-shadow-[0_0_10px_rgba(244,63,94,0.5)]" />
+                </div>
+                <h2 className="text-3xl md:text-4xl font-black text-white mb-3 tracking-tight" style={{ textShadow: '0 0 30px rgba(244,63,94,0.5)' }}>
+                  สินค้าบริษัท
+                </h2>
+                <p className="text-base md:text-lg text-white font-medium">
+                  สินค้าจริงจากบริษัท คุณภาพดี จัดส่งรวดเร็ว
+                </p>
+              </div>
+
+              <HomeRealProducts items={realProducts} />
             </div>
           )}
 

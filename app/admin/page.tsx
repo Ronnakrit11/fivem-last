@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Settings, Users, Activity, FileText, Gamepad2, Building2, MessageCircle, Shield, Bot } from "lucide-react";
+import { Settings, Users, Activity, FileText, Gamepad2, Building2, MessageCircle, Shield, Bot, Package, ShoppingBag } from "lucide-react";
 
 export default function AdminPage() {
   const router = useRouter();
@@ -235,9 +235,39 @@ export default function AdminPage() {
             </p>
           </Link>
 
-     
+          <Link
+            href="/admin/real-products"
+            className="bg-white rounded-xl shadow-md p-6 border border-gray-200 hover:shadow-lg transition-shadow cursor-pointer group"
+          >
+            <div className="flex items-center mb-4">
+              <div className="w-12 h-12 bg-rose-100 rounded-lg flex items-center justify-center mr-4">
+                <Package className="w-6 h-6 text-rose-600" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900 group-hover:text-rose-600 transition-colors">
+                สินค้าจริง
+              </h3>
+            </div>
+            <p className="text-sm text-gray-600">
+              จัดการสินค้าจริงของบริษัท เพิ่ม แก้ไข ลบ
+            </p>
+          </Link>
 
-       
+          <Link
+            href="/admin/real-product-orders"
+            className="bg-white rounded-xl shadow-md p-6 border border-gray-200 hover:shadow-lg transition-shadow cursor-pointer group"
+          >
+            <div className="flex items-center mb-4">
+              <div className="w-12 h-12 bg-fuchsia-100 rounded-lg flex items-center justify-center mr-4">
+                <ShoppingBag className="w-6 h-6 text-fuchsia-600" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900 group-hover:text-fuchsia-600 transition-colors">
+                คำสั่งซื้อสินค้าจริง
+              </h3>
+            </div>
+            <p className="text-sm text-gray-600">
+              ดูและอนุมัติคำสั่งซื้อสินค้าจริงทั้งหมด
+            </p>
+          </Link>
 
           <Link
             href="/admin/website-settings"
