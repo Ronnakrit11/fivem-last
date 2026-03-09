@@ -99,12 +99,18 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const [session, logoUrl] = await Promise.all([
-    auth.api.getSession({
-      headers: await headers(),
-    }),
-    getLogoUrl(),
-  ]);
+  let session = null;
+  let logoUrl = null;
+  try {
+    [session, logoUrl] = await Promise.all([
+      auth.api.getSession({
+        headers: await headers(),
+      }).catch(() => null),
+      getLogoUrl(),
+    ]);
+  } catch (error) {
+    console.error("Error fetching session/logo:", error);
+  }
 
   return (
     <html lang="en" className="dark">
