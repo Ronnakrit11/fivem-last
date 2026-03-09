@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Gavel, User, CheckCircle, XCircle, Search, Clock, Loader2, Trophy, Upload, Image as ImageIcon, Download, FileCheck, X } from "lucide-react";
+import { ArrowLeft, Gavel, User, CheckCircle, XCircle, Search, Clock, Loader2, Trophy, Upload, Image as ImageIcon, Download, FileCheck, X, FileSpreadsheet, Trash2 } from "lucide-react";
 import Link from "next/link";
 
 interface AuctionBid {
@@ -47,6 +47,9 @@ export default function AuctionPage() {
   const [downloadFileUrl, setDownloadFileUrl] = useState<string | null>(null);
   const [showSlipPreview, setShowSlipPreview] = useState(false);
   const [slipPreviewUrl, setSlipPreviewUrl] = useState<string | null>(null);
+  const [exporting, setExporting] = useState(false);
+  const [userRole, setUserRole] = useState<string>("");
+  const [deleting, setDeleting] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/admin/auction-bids")
@@ -64,6 +67,7 @@ export default function AuctionPage() {
       .then(data => {
         if (data) {
           setItems(data.items || []);
+          setUserRole(data.userRole || "");
         }
       })
       .catch(err => {
@@ -79,6 +83,27 @@ export default function AuctionPage() {
     const data = await res.json();
     if (data.success) {
       setItems(data.items || []);
+    }
+  };
+
+  const deleteBid = async (bidId: string) => {
+    if (!confirm("ต้องการลบรายการประมูลนี้หรือไม่?")) return;
+
+    setDeleting(bidId);
+    try {
+      const res = await fetch(`/api/admin/auction-bids/${bidId}`, {
+        method: "DELETE",
+      });
+      const data = await res.json();
+      if (data.success) {
+        await refreshData();
+      } else {
+        alert(data.error || "เกิดข้อผิดพลาด");
+      }
+    } catch {
+      alert("เกิดข้อผิดพลาดในการลบ");
+    } finally {
+      setDeleting(null);
     }
   };
 
@@ -251,6 +276,28 @@ export default function AuctionPage() {
     return new Date(endDate) < new Date();
   };
 
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const res = await fetch("/api/admin/auction-bids/export");
+      if (!res.ok) throw new Error("Export failed");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `auction-bids-${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Export error:", error);
+      alert("เกิดข้อผิดพลาดในการ Export");
+    } finally {
+      setExporting(false);
+    }
+  };
+
   // Filter items
   const filteredItems = items.filter(item => {
     return (
@@ -296,6 +343,14 @@ export default function AuctionPage() {
                 </p>
               </div>
             </div>
+            <button
+              onClick={handleExport}
+              disabled={exporting}
+              className="inline-flex items-center gap-2 px-4 py-2.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors font-medium disabled:opacity-50 shadow-sm"
+            >
+              {exporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileSpreadsheet className="w-4 h-4" />}
+              Export Excel
+            </button>
           </div>
         </div>
 
@@ -499,6 +554,24 @@ export default function AuctionPage() {
                                     >
                                       <FileCheck className="w-4 h-4" />
                                       จัดการ
+                                    </button>
+                                  )}
+                                  {/* Delete Button - owner only */}
+                                  {userRole === "owner" && (
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        deleteBid(bid.id);
+                                      }}
+                                      disabled={deleting === bid.id}
+                                      className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+                                      title="ลบรายการ"
+                                    >
+                                      {deleting === bid.id ? (
+                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                      ) : (
+                                        <Trash2 className="w-4 h-4" />
+                                      )}
                                     </button>
                                   )}
                                 </div>
@@ -714,16 +787,14 @@ export default function AuctionPage() {
                 {/* WON status: admin can mark as PAID (with admin slip) or COMPLETED (with slip + file) */}
                 {selectedBid.status === "WON" && (
                   <>
-                    {adminSlipUrl && (
-                      <button
-                        onClick={() => updateBidStatus(selectedBid.id, "PAID")}
-                        disabled={updating === selectedBid.id}
-                        className="flex-1 px-4 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center gap-2"
-                      >
-                        {updating === selectedBid.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImageIcon className="w-4 h-4" />}
-                        บันทึกสลิป (แอดมินโอนเอง)
-                      </button>
-                    )}
+                    <button
+                      onClick={() => updateBidStatus(selectedBid.id, "PAID")}
+                      disabled={updating === selectedBid.id}
+                      className="flex-1 px-4 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center gap-2"
+                    >
+                      {updating === selectedBid.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImageIcon className="w-4 h-4" />}
+                      บันทึกสลิป (แอดมินโอนเอง)
+                    </button>
                     {(adminSlipUrl || selectedBid.slipImage) && downloadFileUrl && (
                       <button
                         onClick={() => updateBidStatus(selectedBid.id, "COMPLETED")}

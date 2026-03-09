@@ -23,7 +23,7 @@ export async function POST() {
       select: { role: true },
     });
 
-    if (!user || user.role !== "admin") {
+    if (!user || (user.role !== "admin" && user.role !== "owner")) {
       return NextResponse.json(
         { error: "Unauthorized. Admin access required." },
         { status: 403 }

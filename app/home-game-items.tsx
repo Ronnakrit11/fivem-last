@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Crown, ShoppingBag, X, CheckCircle, AlertCircle, Loader2, Building2, Upload, Image as ImageIcon, Shield } from "lucide-react";
+import { Crown, ShoppingBag, X, CheckCircle, AlertCircle, Loader2, Building2, Upload, Image as ImageIcon, Shield, CreditCard, Bitcoin } from "lucide-react";
 
 interface GameItem {
   id: string;
@@ -23,6 +23,7 @@ interface BankAccount {
   accountNumber: string;
   accountName: string;
   qrCodeUrl: string | null;
+  accountType: string;
 }
 
 interface PurchasePolicy {
@@ -55,6 +56,13 @@ export default function HomeGameItems({ items }: { items: GameItem[] }) {
   const [purchasePolicy, setPurchasePolicy] = useState<PurchasePolicy | null>(null);
   const [acceptedPurchasePolicy, setAcceptedPurchasePolicy] = useState(false);
   const [showPurchasePolicyModal, setShowPurchasePolicyModal] = useState(false);
+
+  // Payment method category
+  const [paymentMethod, setPaymentMethod] = useState<"bank" | "card" | "bitcoin">("bank");
+  const [cardType, setCardType] = useState<"visa" | "mastercard">("visa");
+  const [cardBankName, setCardBankName] = useState("");
+  const [cardLast4, setCardLast4] = useState("");
+  const [bitcoinWallet, setBitcoinWallet] = useState("");
 
   // Check login status
   useEffect(() => {
@@ -199,6 +207,11 @@ export default function HomeGameItems({ items }: { items: GameItem[] }) {
     setSelectedBankAccount(null);
     setAcceptedPurchasePolicy(false);
     setResult(null);
+    setPaymentMethod("bank");
+    setCardType("visa");
+    setCardBankName("");
+    setCardLast4("");
+    setBitcoinWallet("");
     setShowPaymentModal(true);
   };
 
@@ -221,11 +234,32 @@ export default function HomeGameItems({ items }: { items: GameItem[] }) {
   const handleConfirmPayment = async () => {
     if (!selectedItem) return;
 
-    // Validate buyer info
-    if (!selectedBankAccount) {
-      setResult({ success: false, message: "กรุณาเลือกวิธีการชำระเงิน" });
-      return;
+    // Validate based on payment method
+    if (paymentMethod === "bank") {
+      if (!selectedBankAccount) {
+        setResult({ success: false, message: "กรุณาเลือกบัญชีธนาคารที่โอน" });
+        return;
+      }
+    } else if (paymentMethod === "card") {
+      if (!cardBankName.trim()) {
+        setResult({ success: false, message: "กรุณากรอกชื่อธนาคารของบัตร" });
+        return;
+      }
+      if (!cardLast4.trim() || cardLast4.length !== 4) {
+        setResult({ success: false, message: "กรุณากรอกเลขท้าย 4 ตัวของบัตร" });
+        return;
+      }
+    } else if (paymentMethod === "bitcoin") {
+      if (!selectedBankAccount) {
+        setResult({ success: false, message: "กรุณาเลือก Wallet ที่โอน" });
+        return;
+      }
+      if (!bitcoinWallet.trim()) {
+        setResult({ success: false, message: "กรุณากรอก Wallet ของคุณ" });
+        return;
+      }
     }
+
     if (!buyerName.trim()) {
       setResult({ success: false, message: "กรุณากรอกชื่อ-นามสกุล" });
       return;
@@ -234,17 +268,27 @@ export default function HomeGameItems({ items }: { items: GameItem[] }) {
       setResult({ success: false, message: "กรุณากรอกเบอร์โทรศัพท์" });
       return;
     }
-    if (!buyerBankAccount.trim()) {
+    if (paymentMethod === "bank" && !buyerBankAccount.trim()) {
       setResult({ success: false, message: "กรุณากรอกเลขบัญชีผู้โอน" });
       return;
     }
-        if (purchasePolicy && !acceptedPurchasePolicy) {
+    if (purchasePolicy && !acceptedPurchasePolicy) {
       setResult({ success: false, message: "กรุณายอมรับนโยบายการซื้อสินค้า" });
       return;
     }
 
     setLoading(true);
     setResult(null);
+
+    // Build payment method string
+    let paymentMethodStr = "";
+    if (paymentMethod === "bank") {
+      paymentMethodStr = `โอนบัญชี: ${selectedBankAccount?.bankName} - ${selectedBankAccount?.accountNumber} | บัญชีผู้โอน: ${buyerBankAccount}`;
+    } else if (paymentMethod === "card") {
+      paymentMethodStr = `บัตร${cardType === "visa" ? "Visa" : "Mastercard"}: ${cardBankName} เลขท้าย ${cardLast4}`;
+    } else if (paymentMethod === "bitcoin") {
+      paymentMethodStr = `Bitcoin: ${selectedBankAccount?.bankName} | Wallet ลูกค้า: ${bitcoinWallet}`;
+    }
 
     try {
       const res = await fetch("/api/game-item-orders", {
@@ -256,7 +300,7 @@ export default function HomeGameItems({ items }: { items: GameItem[] }) {
           buyerName: buyerName.trim(),
           buyerPhone: buyerPhone.trim(),
           buyerBankAccount: buyerBankAccount.trim(),
-          selectedPaymentMethod: selectedBankAccount ? `${selectedBankAccount.bankName} - ${selectedBankAccount.accountNumber}` : "",
+          selectedPaymentMethod: paymentMethodStr,
           slipImage,
           acceptedPurchasePolicy,
         }),
@@ -580,60 +624,151 @@ export default function HomeGameItems({ items }: { items: GameItem[] }) {
                 </div>
               </div>
 
-              {/* Bank Accounts - Select Payment Method */}
+              {/* Payment Method Tabs */}
               <div className="mb-6">
                 <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
                   <Building2 className="w-4 h-4 text-emerald-400" />
                   เลือกวิธีการชำระเงิน <span className="text-red-400">*</span>
                 </h3>
-                {bankAccounts.length > 0 ? (
-                  <div className="space-y-3">
-                    {bankAccounts.map((bank) => (
-                      <div 
-                        key={bank.id} 
-                        onClick={() => setSelectedBankAccount(bank)}
-                        className={`cursor-pointer rounded-lg p-3 transition-all ${
-                          selectedBankAccount?.id === bank.id 
-                            ? "bg-emerald-500/20 border-2 border-emerald-500" 
-                            : "bg-white/5 border border-white/10 hover:border-emerald-500/50"
-                        }`}
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                            selectedBankAccount?.id === bank.id 
-                              ? "border-emerald-500 bg-emerald-500" 
-                              : "border-gray-500"
-                          }`}>
-                            {selectedBankAccount?.id === bank.id && (
-                              <CheckCircle className="w-3 h-3 text-white" />
+                <div className="grid grid-cols-3 gap-2 mb-4">
+                  <button type="button" onClick={() => { setPaymentMethod("bank"); setSelectedBankAccount(null); }}
+                    className={`flex flex-col items-center gap-1.5 px-3 py-3 rounded-lg border-2 transition-all text-xs font-medium ${paymentMethod === "bank" ? "border-emerald-500 bg-emerald-500/10 text-emerald-400" : "border-white/10 bg-white/5 text-gray-400 hover:border-white/20"}`}>
+                    <Building2 className="w-5 h-5" />
+                    โอนบัญชี
+                  </button>
+                  <button type="button" onClick={() => { setPaymentMethod("card"); setSelectedBankAccount(null); }}
+                    className={`flex flex-col items-center gap-1.5 px-3 py-3 rounded-lg border-2 transition-all text-xs font-medium ${paymentMethod === "card" ? "border-blue-500 bg-blue-500/10 text-blue-400" : "border-white/10 bg-white/5 text-gray-400 hover:border-white/20"}`}>
+                    <CreditCard className="w-5 h-5" />
+                    บัตรเครดิต/เดบิต
+                  </button>
+                  <button type="button" onClick={() => { setPaymentMethod("bitcoin"); setSelectedBankAccount(null); }}
+                    className={`flex flex-col items-center gap-1.5 px-3 py-3 rounded-lg border-2 transition-all text-xs font-medium ${paymentMethod === "bitcoin" ? "border-orange-500 bg-orange-500/10 text-orange-400" : "border-white/10 bg-white/5 text-gray-400 hover:border-white/20"}`}>
+                    <Bitcoin className="w-5 h-5" />
+                    Bitcoin
+                  </button>
+                </div>
+              </div>
+
+              {/* === BANK TRANSFER === */}
+              {paymentMethod === "bank" && (
+                <div className="mb-6">
+                  <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
+                    <Building2 className="w-4 h-4 text-emerald-400" />
+                    เลือกบัญชีธนาคาร <span className="text-red-400">*</span>
+                  </h3>
+                  {bankAccounts.filter(b => b.accountType !== "bitcoin").length > 0 ? (
+                    <div className="space-y-3">
+                      {bankAccounts.filter(b => b.accountType !== "bitcoin").map((bank) => (
+                        <div key={bank.id} onClick={() => setSelectedBankAccount(bank)}
+                          className={`cursor-pointer rounded-lg p-3 transition-all ${selectedBankAccount?.id === bank.id ? "bg-emerald-500/20 border-2 border-emerald-500" : "bg-white/5 border border-white/10 hover:border-emerald-500/50"}`}>
+                          <div className="flex items-center gap-3">
+                            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${selectedBankAccount?.id === bank.id ? "border-emerald-500 bg-emerald-500" : "border-gray-500"}`}>
+                              {selectedBankAccount?.id === bank.id && <CheckCircle className="w-3 h-3 text-white" />}
+                            </div>
+                            <div className="flex-1">
+                              <p className="font-semibold text-emerald-400">{bank.bankName}</p>
+                              <p className="text-white text-lg font-mono">{bank.accountNumber}</p>
+                              <p className="text-gray-400 text-sm">{bank.accountName}</p>
+                            </div>
+                          </div>
+                          {selectedBankAccount?.id === bank.id && bank.qrCodeUrl && (
+                            <div className="mt-3 pt-3 border-t border-emerald-500/20">
+                              <p className="text-xs text-gray-400 mb-2 flex items-center gap-1">
+                                <Building2 className="w-3 h-3" />
+                                สแกน QR Code เพื่อโอนเงิน
+                              </p>
+                              <img src={bank.qrCodeUrl} alt="QR Code" className="w-full max-w-[200px] mx-auto rounded-lg bg-white p-2" />
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-gray-400 text-sm">กำลังโหลดข้อมูลบัญชี...</p>
+                  )}
+                </div>
+              )}
+
+              {/* === CREDIT/DEBIT CARD === */}
+              {paymentMethod === "card" && (
+                <div className="mb-6 space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">ประเภทบัตร <span className="text-red-500">*</span></label>
+                    <div className="flex gap-3">
+                      <button type="button" onClick={() => setCardType("visa")}
+                        className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg border-2 transition-all font-semibold ${cardType === "visa" ? "border-blue-500 bg-blue-500/10 text-blue-400" : "border-white/10 bg-white/5 text-gray-400 hover:border-white/20"}`}>
+                        <span className="text-lg">💳</span> Visa
+                      </button>
+                      <button type="button" onClick={() => setCardType("mastercard")}
+                        className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-lg border-2 transition-all font-semibold ${cardType === "mastercard" ? "border-orange-500 bg-orange-500/10 text-orange-400" : "border-white/10 bg-white/5 text-gray-400 hover:border-white/20"}`}>
+                        <span className="text-lg">💳</span> Mastercard
+                      </button>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-1">ชื่อธนาคารของบัตร <span className="text-red-500">*</span></label>
+                    <input type="text" value={cardBankName} onChange={(e) => setCardBankName(e.target.value)} placeholder="เช่น กสิกรไทย, กรุงเทพ, ไทยพาณิชย์"
+                      className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-1">เลขท้าย 4 ตัวของบัตร <span className="text-red-500">*</span></label>
+                    <input type="text" value={cardLast4} onChange={(e) => { const val = e.target.value.replace(/\D/g, "").slice(0, 4); setCardLast4(val); }}
+                      placeholder="xxxx" maxLength={4}
+                      className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-lg tracking-widest" />
+                  </div>
+                </div>
+              )}
+
+              {/* === BITCOIN === */}
+              {paymentMethod === "bitcoin" && (
+                <div className="mb-6 space-y-4">
+                  <div>
+                    <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
+                      <Bitcoin className="w-4 h-4 text-orange-400" />
+                      เลือก Wallet ที่ต้องการโอน <span className="text-red-400">*</span>
+                    </h3>
+                    {bankAccounts.filter(b => b.accountType === "bitcoin").length > 0 ? (
+                      <div className="space-y-3">
+                        {bankAccounts.filter(b => b.accountType === "bitcoin").map((wallet) => (
+                          <div key={wallet.id} onClick={() => setSelectedBankAccount(wallet)}
+                            className={`cursor-pointer rounded-lg p-3 transition-all ${selectedBankAccount?.id === wallet.id ? "bg-orange-500/20 border-2 border-orange-500" : "bg-white/5 border border-white/10 hover:border-orange-500/50"}`}>
+                            <div className="flex items-center gap-3">
+                              <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${selectedBankAccount?.id === wallet.id ? "border-orange-500 bg-orange-500" : "border-gray-500"}`}>
+                                {selectedBankAccount?.id === wallet.id && <CheckCircle className="w-3 h-3 text-white" />}
+                              </div>
+                              <div className="flex-1">
+                                <p className="font-semibold text-orange-400">{wallet.bankName}</p>
+                                <p className="text-white text-sm font-mono break-all">{wallet.accountNumber}</p>
+                                <p className="text-gray-400 text-sm">{wallet.accountName}</p>
+                              </div>
+                            </div>
+                            {selectedBankAccount?.id === wallet.id && wallet.qrCodeUrl && (
+                              <div className="mt-3 pt-3 border-t border-orange-500/20">
+                                <p className="text-xs text-gray-400 mb-2 flex items-center gap-1">
+                                  <Bitcoin className="w-3 h-3" />
+                                  สแกน QR Code เพื่อโอน
+                                </p>
+                                <img src={wallet.qrCodeUrl} alt="QR Code" className="w-full max-w-[200px] mx-auto rounded-lg bg-white p-2" />
+                              </div>
                             )}
                           </div>
-                          <div className="flex-1">
-                            <p className="font-semibold text-emerald-400">{bank.bankName}</p>
-                            <p className="text-white text-lg font-mono">{bank.accountNumber}</p>
-                            <p className="text-gray-400 text-sm">{bank.accountName}</p>
-                          </div>
-                        </div>
-                        {selectedBankAccount?.id === bank.id && bank.qrCodeUrl && (
-                          <div className="mt-3 pt-3 border-t border-emerald-500/20">
-                            <p className="text-xs text-gray-400 mb-2 flex items-center gap-1">
-                              <Building2 className="w-3 h-3" />
-                              สแกน QR Code เพื่อโอนเงิน
-                            </p>
-                            <img
-                              src={bank.qrCodeUrl}
-                              alt="QR Code"
-                              className="w-full max-w-[200px] mx-auto rounded-lg bg-white p-2"
-                            />
-                          </div>
-                        )}
+                        ))}
                       </div>
-                    ))}
+                    ) : (
+                      <div className="p-4 bg-orange-500/10 border border-orange-500/20 rounded-lg text-center">
+                        <Bitcoin className="w-8 h-8 text-orange-400 mx-auto mb-2" />
+                        <p className="text-sm text-orange-300">ยังไม่มี Bitcoin Wallet</p>
+                        <p className="text-xs text-gray-400 mt-1">กรุณาติดต่อแอดมิน</p>
+                      </div>
+                    )}
                   </div>
-                ) : (
-                  <p className="text-gray-400 text-sm">กำลังโหลดข้อมูลบัญชี...</p>
-                )}
-              </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-1">Wallet ของคุณ <span className="text-red-500">*</span></label>
+                    <input type="text" value={bitcoinWallet} onChange={(e) => setBitcoinWallet(e.target.value)} placeholder="กรอก Wallet Address ของคุณ"
+                      className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white focus:ring-2 focus:ring-orange-500 focus:border-transparent font-mono text-sm" />
+                  </div>
+                </div>
+              )}
 
               {/* Buyer Info Form */}
               <div className="space-y-4 mb-6">
@@ -663,23 +798,25 @@ export default function HomeGameItems({ items }: { items: GameItem[] }) {
                   />
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-1">
-                    เลขบัญชีผู้โอน <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={buyerBankAccount}
-                    onChange={(e) => setBuyerBankAccount(e.target.value)}
-                    placeholder="เลขบัญชีที่ใช้โอนเงิน"
-                    className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                  />
-                </div>
+                {paymentMethod === "bank" && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-1">
+                      เลขบัญชีผู้โอน
+                    </label>
+                    <input
+                      type="text"
+                      value={buyerBankAccount}
+                      onChange={(e) => setBuyerBankAccount(e.target.value)}
+                      placeholder="เลขบัญชีที่ใช้โอนเงิน"
+                      className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-lg text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    />
+                  </div>
+                )}
 
                 {/* Slip Upload */}
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-1">
-                    แนบสลิปการโอนเงิน <span className="text-red-500">*</span>
+                    แนบสลิปการโอนเงิน (ถ้ามี)
                   </label>
                   {slipImage ? (
                     <div className="relative">

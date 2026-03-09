@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Plus, X, Upload, Loader2, Edit2, Trash2, Package } from "lucide-react";
+import { ArrowLeft, Plus, X, Upload, Loader2, Edit2, Trash2, Package, GripVertical, Save } from "lucide-react";
 
 interface RealProduct {
   id: string;
@@ -25,6 +25,10 @@ export default function AdminRealProductsPage() {
   const [uploading, setUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
+  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  const [savingSort, setSavingSort] = useState(false);
+  const [sortChanged, setSortChanged] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [formData, setFormData] = useState({
     name: "",
@@ -133,6 +137,60 @@ export default function AdminRealProductsPage() {
     }
   };
 
+  const handleDragStart = (index: number) => {
+    setDraggedIndex(index);
+  };
+
+  const handleDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    if (draggedIndex === null || draggedIndex === index) return;
+    setDragOverIndex(index);
+  };
+
+  const handleDrop = (index: number) => {
+    if (draggedIndex === null || draggedIndex === index) {
+      setDraggedIndex(null);
+      setDragOverIndex(null);
+      return;
+    }
+    const newItems = [...items];
+    const [moved] = newItems.splice(draggedIndex, 1);
+    newItems.splice(index, 0, moved);
+    setItems(newItems);
+    setDraggedIndex(null);
+    setDragOverIndex(null);
+    setSortChanged(true);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedIndex(null);
+    setDragOverIndex(null);
+  };
+
+  const saveSortOrder = async () => {
+    setSavingSort(true);
+    try {
+      const sortData = items.map((item, idx) => ({ id: item.id, sort: idx }));
+      const res = await fetch("/api/admin/real-products", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ items: sortData }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setSortChanged(false);
+        alert("บันทึกลำดับสำเร็จ");
+      } else {
+        alert(data.error || "เกิดข้อผิดพลาด");
+      }
+    } catch (error) {
+      console.error("Error saving sort:", error);
+      alert("เกิดข้อผิดพลาด");
+    } finally {
+      setSavingSort(false);
+    }
+  };
+
   const openModal = (item?: RealProduct) => {
     if (item) {
       setEditingItem(item);
@@ -186,10 +244,11 @@ export default function AdminRealProductsPage() {
           </div>
 
           {loading ? (
-            <div className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {[...Array(6)].map((_, i) => (
+            <div className="p-6 space-y-3">
+              {[...Array(4)].map((_, i) => (
                 <div key={i} className="bg-gray-100 rounded-xl p-4 animate-pulse">
                   <div className="flex items-center gap-4">
+                    <div className="w-6 h-6 bg-gray-200 rounded" />
                     <div className="w-16 h-16 bg-gray-200 rounded-lg" />
                     <div className="flex-1">
                       <div className="h-4 bg-gray-200 rounded w-3/4 mb-2" />
@@ -200,46 +259,77 @@ export default function AdminRealProductsPage() {
               ))}
             </div>
           ) : items.length > 0 ? (
-            <div className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {items.map((item) => (
-                <div key={item.id} className="bg-gray-50 rounded-xl p-4 border border-gray-200 hover:border-rose-300 transition-all">
-                  <div className="flex items-start gap-3">
-                    <div className="w-16 h-16 rounded-lg bg-gradient-to-br from-rose-100 to-pink-100 flex items-center justify-center overflow-hidden flex-shrink-0">
-                      {item.image ? (
-                        <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
-                      ) : (
-                        <Package className="w-8 h-8 text-rose-600" />
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-gray-900 truncate">{item.name}</h3>
-                      <p className="text-sm text-gray-500 line-clamp-1">{item.description || "ไม่มีคำอธิบาย"}</p>
-                      <div className="flex items-center gap-2 mt-2 flex-wrap">
-                        <span className="text-lg font-bold text-rose-600">฿{item.price.toFixed(2)}</span>
-                        <span className={`text-xs px-2 py-0.5 rounded ${item.stock > 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                          คงเหลือ {item.stock}
-                        </span>
-                        <span className={`text-xs px-2 py-0.5 rounded ${item.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
-                          {item.isActive ? 'เปิด' : 'ปิด'}
-                        </span>
-                      </div>
+            <div className="p-6 space-y-2">
+              {sortChanged && (
+                <div className="flex items-center justify-between p-3 mb-2 bg-amber-50 border border-amber-200 rounded-lg">
+                  <p className="text-sm text-amber-700 font-medium">ลำดับมีการเปลี่ยนแปลง กรุณากดบันทึก</p>
+                  <button
+                    onClick={saveSortOrder}
+                    disabled={savingSort}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors text-sm font-medium disabled:opacity-50"
+                  >
+                    {savingSort ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                    บันทึกลำดับ
+                  </button>
+                </div>
+              )}
+              <p className="text-xs text-gray-400 mb-2">ลากเพื่อเรียงลำดับการแสดงผลในหน้าเว็บ</p>
+              {items.map((item, index) => (
+                <div
+                  key={item.id}
+                  draggable
+                  onDragStart={() => handleDragStart(index)}
+                  onDragOver={(e) => handleDragOver(e, index)}
+                  onDrop={() => handleDrop(index)}
+                  onDragEnd={handleDragEnd}
+                  className={`flex items-center gap-3 p-4 rounded-xl border transition-all cursor-grab active:cursor-grabbing ${
+                    draggedIndex === index
+                      ? "opacity-50 border-rose-300 bg-rose-50"
+                      : dragOverIndex === index
+                      ? "border-rose-400 bg-rose-50 shadow-md"
+                      : "bg-gray-50 border-gray-200 hover:border-rose-300"
+                  }`}
+                >
+                  <div className="flex-shrink-0 text-gray-400 hover:text-gray-600">
+                    <GripVertical className="w-5 h-5" />
+                  </div>
+                  <span className="w-7 h-7 rounded-full bg-gray-200 text-gray-600 text-xs font-bold flex items-center justify-center flex-shrink-0">
+                    {index + 1}
+                  </span>
+                  <div className="w-14 h-14 rounded-lg bg-gradient-to-br from-rose-100 to-pink-100 flex items-center justify-center overflow-hidden flex-shrink-0">
+                    {item.image ? (
+                      <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <Package className="w-7 h-7 text-rose-600" />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-semibold text-gray-900 truncate">{item.name}</h3>
+                    <div className="flex items-center gap-2 mt-1 flex-wrap">
+                      <span className="text-sm font-bold text-rose-600">฿{item.price.toFixed(2)}</span>
+                      <span className={`text-xs px-2 py-0.5 rounded ${item.stock > 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                        คงเหลือ {item.stock}
+                      </span>
+                      <span className={`text-xs px-2 py-0.5 rounded ${item.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                        {item.isActive ? 'เปิด' : 'ปิด'}
+                      </span>
                     </div>
                   </div>
-                  <div className="flex gap-2 mt-4 pt-4 border-t border-gray-200">
+                  <div className="flex items-center gap-2 flex-shrink-0">
                     <button
-                      onClick={() => openModal(item)}
-                      className="flex-1 px-3 py-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200 transition-colors text-sm font-medium flex items-center justify-center gap-1"
+                      onClick={(e) => { e.stopPropagation(); openModal(item); }}
+                      className="p-2 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200 transition-colors"
+                      title="แก้ไข"
                     >
                       <Edit2 className="w-4 h-4" />
-                      แก้ไข
                     </button>
                     <button
-                      onClick={() => handleDelete(item.id)}
+                      onClick={(e) => { e.stopPropagation(); handleDelete(item.id); }}
                       disabled={deleting === item.id}
-                      className="flex-1 px-3 py-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-colors text-sm font-medium flex items-center justify-center gap-1 disabled:opacity-50"
+                      className="p-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-colors disabled:opacity-50"
+                      title="ลบ"
                     >
                       {deleting === item.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
-                      ลบ
                     </button>
                   </div>
                 </div>

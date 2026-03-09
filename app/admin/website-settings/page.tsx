@@ -26,7 +26,7 @@ export default function WebsiteSettingsPage() {
     fetch("/api/user/role")
       .then(res => res.json())
       .then(data => {
-        if (data.error || data.role !== "admin") {
+        if (data.error || (data.role !== "admin" && data.role !== "owner")) {
           router.push(data.role ? "/dashboard" : "/auth");
           return;
         }

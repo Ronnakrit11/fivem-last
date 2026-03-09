@@ -36,7 +36,7 @@ export default function AdminProductsPage() {
         if (!mounted) return;
 
         // Check if unauthorized
-        if (roleData.error || roleData.role !== "admin") {
+        if (roleData.error || (roleData.role !== "admin" && roleData.role !== "owner")) {
           router.push(roleData.role ? "/dashboard" : "/auth");
           return;
         }

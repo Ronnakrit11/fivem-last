@@ -2,6 +2,51 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 
+// DELETE - Delete auction bid (owner only)
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params;
+
+    const session = await auth.api.getSession({
+      headers: request.headers,
+    });
+
+    if (!session?.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { role: true },
+    });
+
+    if (!user || user.role !== "owner") {
+      return NextResponse.json({ error: "Forbidden - Owner only" }, { status: 403 });
+    }
+
+    // Check if bid exists
+    const bid = await prisma.auctionBid.findUnique({
+      where: { id },
+    });
+
+    if (!bid) {
+      return NextResponse.json({ error: "Bid not found" }, { status: 404 });
+    }
+
+    await prisma.auctionBid.delete({
+      where: { id },
+    });
+
+    return NextResponse.json({ success: true, message: "ลบรายการประมูลสำเร็จ" });
+  } catch (error) {
+    console.error("Error deleting auction bid:", error);
+    return NextResponse.json({ error: "Failed to delete auction bid" }, { status: 500 });
+  }
+}
+
 // PATCH - Update auction bid status (admin only)
 export async function PATCH(
   request: NextRequest,

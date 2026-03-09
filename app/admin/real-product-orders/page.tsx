@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, ShoppingBag, CheckCircle, XCircle, Search, Clock, Loader2, X, Eye, Package } from "lucide-react";
+import { ArrowLeft, ShoppingBag, CheckCircle, XCircle, Search, Clock, Loader2, X, Eye, Package, Trash2, Download } from "lucide-react";
 
 interface OrderItem {
   id: string;
@@ -52,6 +52,8 @@ export default function AdminRealProductOrdersPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [totalOrders, setTotalOrders] = useState(0);
   const pageSize = 20;
+  const [deleting, setDeleting] = useState<string | null>(null);
+  const [exporting, setExporting] = useState(false);
 
   const fetchOrders = (page: number = 1) => {
     setLoading(true);
@@ -108,6 +110,54 @@ export default function AdminRealProductOrdersPage() {
     }
   };
 
+  const handleDelete = async (orderId: string) => {
+    if (!confirm("คุณแน่ใจว่าต้องการลบคำสั่งซื้อนี้? การลบจะไม่สามารถกู้คืนได้")) return;
+
+    setDeleting(orderId);
+    try {
+      const res = await fetch(`/api/admin/real-product-orders?id=${orderId}`, { method: "DELETE" });
+      const data = await res.json();
+      if (data.success) {
+        setOrders(prev => prev.filter(o => o.id !== orderId));
+        setTotalOrders(prev => prev - 1);
+        if (showDetailModal && selectedOrder?.id === orderId) {
+          setShowDetailModal(false);
+          setSelectedOrder(null);
+        }
+        alert("ลบคำสั่งซื้อสำเร็จ");
+      } else {
+        alert(data.error || "เกิดข้อผิดพลาด");
+      }
+    } catch (error) {
+      console.error("Error:", error);
+      alert("เกิดข้อผิดพลาด");
+    } finally {
+      setDeleting(null);
+    }
+  };
+
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const res = await fetch("/api/admin/real-product-orders/export");
+      if (!res.ok) throw new Error("Export failed");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `real-product-orders-${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error("Export error:", error);
+      alert("เกิดข้อผิดพลาดในการ Export");
+    } finally {
+      setExporting(false);
+    }
+  };
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "PENDING":
@@ -146,14 +196,24 @@ export default function AdminRealProductOrdersPage() {
             <ArrowLeft className="w-4 h-4 mr-1" />
             กลับไปหน้าจัดการ
           </Link>
-          <div className="flex items-center">
-            <div className="w-12 h-12 bg-rose-100 rounded-full flex items-center justify-center mr-4">
-              <ShoppingBag className="w-6 h-6 text-rose-600" />
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <div className="w-12 h-12 bg-rose-100 rounded-full flex items-center justify-center mr-4">
+                <ShoppingBag className="w-6 h-6 text-rose-600" />
+              </div>
+              <div>
+                <h1 className="text-3xl font-bold text-gray-900">คำสั่งซื้อสินค้าจริง</h1>
+                <p className="text-gray-600">ดูและจัดการคำสั่งซื้อสินค้าจริงทั้งหมด ({totalOrders} รายการ)</p>
+              </div>
             </div>
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">คำสั่งซื้อสินค้าจริง</h1>
-              <p className="text-gray-600">ดูและจัดการคำสั่งซื้อสินค้าจริงทั้งหมด ({totalOrders} รายการ)</p>
-            </div>
+            <button
+              onClick={handleExport}
+              disabled={exporting}
+              className="inline-flex items-center gap-2 px-4 py-2.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors font-medium disabled:opacity-50 shadow-sm"
+            >
+              {exporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+              Export Excel
+            </button>
           </div>
         </div>
 
@@ -257,6 +317,14 @@ export default function AdminRealProductOrdersPage() {
                               </button>
                             </>
                           )}
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleDelete(order.id); }}
+                            disabled={deleting === order.id}
+                            className="p-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-red-100 hover:text-red-600 transition-colors disabled:opacity-50"
+                            title="ลบ"
+                          >
+                            {deleting === order.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -389,7 +457,7 @@ export default function AdminRealProductOrdersPage() {
 
                 {/* Actions */}
                 {selectedOrder.status === "PENDING" && (
-                  <div className="flex gap-3">
+                  <div className="flex gap-3 mb-3">
                     <button
                       onClick={() => handleUpdateStatus(selectedOrder.id, "APPROVED")}
                       disabled={updating === selectedOrder.id}
@@ -408,6 +476,14 @@ export default function AdminRealProductOrdersPage() {
                     </button>
                   </div>
                 )}
+                <button
+                  onClick={() => handleDelete(selectedOrder.id)}
+                  disabled={deleting === selectedOrder.id}
+                  className="w-full px-4 py-3 bg-gray-100 text-gray-600 rounded-lg hover:bg-red-50 hover:text-red-600 transition-colors font-medium disabled:opacity-50 flex items-center justify-center gap-2 border border-gray-200"
+                >
+                  {deleting === selectedOrder.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                  ลบคำสั่งซื้อ
+                </button>
               </div>
             </div>
           </div>

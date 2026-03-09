@@ -28,7 +28,7 @@ async function checkAdminAndGetGames() {
       select: { role: true },
     });
 
-    if (user?.role !== 'admin') {
+    if (user?.role !== 'admin' && user?.role !== 'owner') {
       redirect('/');
     }
 

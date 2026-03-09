@@ -50,6 +50,61 @@ export async function GET(request: NextRequest) {
   }
 }
 
+// DELETE - Delete a real product order
+export async function DELETE(request: NextRequest) {
+  try {
+    const session = await auth.api.getSession({ headers: request.headers });
+    if (!session?.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const user = await prisma.user.findUnique({ where: { id: session.user.id } });
+    if (!user || (user.role !== "admin" && user.role !== "owner")) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    const { searchParams } = new URL(request.url);
+    const orderId = searchParams.get("id");
+
+    if (!orderId) {
+      return NextResponse.json({ error: "Missing order id" }, { status: 400 });
+    }
+
+    const order = await prisma.realProductOrder.findUnique({
+      where: { id: orderId },
+      include: { items: true },
+    });
+
+    if (!order) {
+      return NextResponse.json({ error: "Order not found" }, { status: 404 });
+    }
+
+    // If order is PENDING, restore stock before deleting
+    if (order.status === "PENDING") {
+      await prisma.$transaction(async (tx) => {
+        for (const item of order.items) {
+          await tx.realProduct.update({
+            where: { id: item.realProductId },
+            data: { stock: { increment: item.quantity } },
+          });
+        }
+        await tx.realProductOrderItem.deleteMany({ where: { orderId } });
+        await tx.realProductOrder.delete({ where: { id: orderId } });
+      });
+    } else {
+      await prisma.$transaction(async (tx) => {
+        await tx.realProductOrderItem.deleteMany({ where: { orderId } });
+        await tx.realProductOrder.delete({ where: { id: orderId } });
+      });
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("Error deleting real product order:", error);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
+}
+
 // PATCH - Update order status (approve/reject)
 export async function PATCH(request: NextRequest) {
   try {
