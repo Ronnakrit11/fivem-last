@@ -644,3 +644,15 @@ enum RealProductOrderStatus {
   REJECTED
   COMPLETED
 }
+
+model HomePageContent {
+  id        String   @id @default(cuid())
+  sections  Json     @default("{}") // main sections config (games, cards, products, etc.)
+  trustBar  Json     @default("[]") // trust bar items
+  footer    Json     @default("{}") // footer config
+  customSections Json @default("[]") // custom sections with rich text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("home_page_content")
+}

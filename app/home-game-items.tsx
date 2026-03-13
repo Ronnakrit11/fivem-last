@@ -32,7 +32,14 @@ interface PurchasePolicy {
   content: string;
 }
 
-export default function HomeGameItems({ items }: { items: GameItem[] }) {
+interface CardColorConfig {
+  cardBgColor?: string;
+  cardTextColor?: string;
+  buttonColor?: string;
+  buttonTextColor?: string;
+}
+
+export default function HomeGameItems({ items, colorConfig }: { items: GameItem[]; colorConfig?: CardColorConfig }) {
   const router = useRouter();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [showModal, setShowModal] = useState(false);
@@ -339,7 +346,8 @@ export default function HomeGameItems({ items }: { items: GameItem[] }) {
           <div
             key={item.id}
             onClick={() => handleItemClick(item)}
-            className="rounded-xl overflow-hidden flex flex-col transition-all bg-slate-900/80 shadow-md hover:shadow-lg hover:scale-[1.02] group cursor-pointer"
+            className="rounded-xl overflow-hidden flex flex-col transition-all shadow-md hover:shadow-lg hover:scale-[1.02] group cursor-pointer"
+            style={{ backgroundColor: colorConfig?.cardBgColor || 'rgba(15, 23, 42, 0.8)' }}
           >
             {/* Product Image */}
             <div className="relative aspect-square bg-gradient-to-br from-purple-900/30 to-indigo-900/30">
@@ -381,7 +389,10 @@ export default function HomeGameItems({ items }: { items: GameItem[] }) {
 
             {/* Product Info */}
             <div className="p-3 flex flex-col flex-grow">
-              <h3 className="text-sm font-bold text-white mb-1 line-clamp-2 min-h-[2.5rem] group-hover:text-purple-300 transition-colors">
+              <h3
+                className="text-sm font-bold mb-1 line-clamp-2 min-h-[2.5rem] transition-colors"
+                style={{ color: colorConfig?.cardTextColor || '#ffffff' }}
+              >
                 {item.name}
               </h3>
 
@@ -411,7 +422,14 @@ export default function HomeGameItems({ items }: { items: GameItem[] }) {
               </div>
 
               {/* Action Button */}
-              <div className={`w-full py-1.5 rounded-md font-semibold transition-colors flex items-center justify-center text-xs ${item.isAuction ? 'bg-amber-500/20 text-amber-300 border border-amber-500/50 group-hover:bg-amber-500/30' : 'bg-purple-500/20 text-purple-300 border border-purple-500/50 group-hover:bg-purple-500/30'}`}>
+              <div
+                className="w-full py-1.5 rounded-md font-semibold transition-colors flex items-center justify-center text-xs border"
+                style={{
+                  backgroundColor: colorConfig?.buttonColor ? `${colorConfig.buttonColor}33` : (item.isAuction ? 'rgba(245, 158, 11, 0.2)' : 'rgba(168, 85, 247, 0.2)'),
+                  color: colorConfig?.buttonTextColor || (item.isAuction ? '#fcd34d' : '#d8b4fe'),
+                  borderColor: colorConfig?.buttonColor ? `${colorConfig.buttonColor}80` : (item.isAuction ? 'rgba(245, 158, 11, 0.5)' : 'rgba(168, 85, 247, 0.5)'),
+                }}
+              >
                 <ShoppingBag className="w-3 h-3 mr-1" />
                 {item.isAuction ? 'ประมูล' : 'สั่งซื้อ'}
               </div>

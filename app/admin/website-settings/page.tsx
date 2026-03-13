@@ -256,6 +256,25 @@ export default function WebsiteSettingsPage() {
           </div>
         </div>
 
+        {/* จัดการเนื้อหาหน้าแรก */}
+        <Link
+          href="/admin/homepage-content"
+          className="mb-6 block bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200 rounded-xl p-5 hover:shadow-md transition-shadow group"
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="w-11 h-11 bg-indigo-100 rounded-full flex items-center justify-center">
+                <Palette className="w-5 h-5 text-indigo-600" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-900">จัดการเนื้อหาหน้าแรก</h3>
+                <p className="text-sm text-gray-500">แก้ไขข้อความ เปิด/ปิด Section เพิ่ม Custom Section ด้วย Rich Text Editor</p>
+              </div>
+            </div>
+            <ArrowLeft className="w-5 h-5 text-gray-400 rotate-180 group-hover:translate-x-1 transition-transform" />
+          </div>
+        </Link>
+
         {/* Settings Form */}
         <div className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">

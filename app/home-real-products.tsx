@@ -33,7 +33,14 @@ interface PurchasePolicy {
   content: string;
 }
 
-export default function HomeRealProducts({ items }: { items: RealProduct[] }) {
+interface CardColorConfig {
+  cardBgColor?: string;
+  cardTextColor?: string;
+  buttonColor?: string;
+  buttonTextColor?: string;
+}
+
+export default function HomeRealProducts({ items, colorConfig }: { items: RealProduct[]; colorConfig?: CardColorConfig }) {
   const router = useRouter();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -273,7 +280,8 @@ export default function HomeRealProducts({ items }: { items: RealProduct[] }) {
           <div
             key={item.id}
             onClick={() => addToCart(item)}
-            className="rounded-xl overflow-hidden flex flex-col transition-all bg-slate-900/80 shadow-md hover:shadow-lg hover:scale-[1.02] group cursor-pointer"
+            className="rounded-xl overflow-hidden flex flex-col transition-all shadow-md hover:shadow-lg hover:scale-[1.02] group cursor-pointer"
+            style={{ backgroundColor: colorConfig?.cardBgColor || 'rgba(15, 23, 42, 0.8)' }}
           >
             <div className="relative aspect-square bg-gradient-to-br from-rose-900/30 to-pink-900/30">
               {item.image ? (
@@ -298,7 +306,10 @@ export default function HomeRealProducts({ items }: { items: RealProduct[] }) {
             </div>
 
             <div className="p-3 flex flex-col flex-grow">
-              <h3 className="text-sm font-bold text-white mb-1 line-clamp-2 min-h-[2.5rem] group-hover:text-rose-300 transition-colors">
+              <h3
+                className="text-sm font-bold mb-1 line-clamp-2 min-h-[2.5rem] transition-colors"
+                style={{ color: colorConfig?.cardTextColor || '#ffffff' }}
+              >
                 {item.name}
               </h3>
               <div className="mb-2 mt-auto">
@@ -307,7 +318,14 @@ export default function HomeRealProducts({ items }: { items: RealProduct[] }) {
                   <span className="text-base font-bold text-green-400">฿{item.price.toFixed(0)}</span>
                 </div>
               </div>
-              <div className="w-full py-1.5 rounded-md font-semibold transition-colors flex items-center justify-center text-xs bg-rose-500/20 text-rose-300 border border-rose-500/50 group-hover:bg-rose-500/30">
+              <div
+                className="w-full py-1.5 rounded-md font-semibold transition-colors flex items-center justify-center text-xs border"
+                style={{
+                  backgroundColor: colorConfig?.buttonColor ? `${colorConfig.buttonColor}33` : 'rgba(244, 63, 94, 0.2)',
+                  color: colorConfig?.buttonTextColor || '#fda4af',
+                  borderColor: colorConfig?.buttonColor ? `${colorConfig.buttonColor}80` : 'rgba(244, 63, 94, 0.5)',
+                }}
+              >
                 <ShoppingCart className="w-3 h-3 mr-1" />
                 เพิ่มลงตะกร้า
               </div>
