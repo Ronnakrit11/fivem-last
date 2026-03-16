@@ -1,6 +1,5 @@
 import Link from "next/link";
-import Image from "next/image";
-import { Crown, Gamepad2, CreditCard, Gavel, Package } from "lucide-react";
+import { Crown, Gavel, Package } from "lucide-react";
 import dynamic from "next/dynamic";
 import { Suspense } from "react";
 import RecentOrders from "./components/RecentOrders";
@@ -210,13 +209,13 @@ export default async function Home() {
   ]);
 
   // Parse homepage content from DB (with fallbacks)
-  const sections: Record<string, SectionConfig> = (homeContent?.sections as any) || {};
-  const trustBarItems: TrustBarItem[] = (homeContent?.trustBar as any) || [
+  const sections: Record<string, SectionConfig> = (homeContent?.sections as unknown as Record<string, SectionConfig>) || {};
+  const trustBarItems: TrustBarItem[] = (homeContent?.trustBar as unknown as TrustBarItem[]) || [
     { title: "การันตีความพอใจ", desc: "เปลี่ยน/คืนเงินตามเงื่อนไข", icon: "shield", visible: true },
     { title: "การชำระเงินปลอดภัย", desc: "ปกป้องข้อมูลผู้ใช้เข้มงวด", icon: "lock", visible: true },
     { title: "ฝ่ายสนับสนุนฉับไว", desc: "ตอบกลับเร็ว ดูแลจนกว่าจะเสร็จสิ้น", icon: "clock", visible: true },
   ];
-  const footerConfig: FooterConfig = (homeContent?.footer as any) || {
+  const footerConfig: FooterConfig = (homeContent?.footer as unknown as FooterConfig) || {
     title: "velounity",
     description: "A demonstration of modern authentication patterns and best practices",
     links: [
@@ -227,7 +226,7 @@ export default async function Home() {
     ],
     visible: true,
   };
-  const customSections: CustomSectionData[] = ((homeContent?.customSections as any) || [])
+  const customSections: CustomSectionData[] = ((homeContent?.customSections as unknown as CustomSectionData[]) || [])
     .filter((s: CustomSectionData) => s.visible)
     .sort((a: CustomSectionData, b: CustomSectionData) => a.sort - b.sort);
 
